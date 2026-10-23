@@ -115,7 +115,7 @@ docker compose up -d --build
 ### What happens at build time
 1. `pip install -r requirements.txt`
 2. `python challenge_files/generate.py` — writes all challenge files relative to its own location (uses `pathlib.Path(__file__).parent.resolve()`)
-3. `echo "FLAG{shell_metacharacters_execute_commands}" > /flag18.txt`
+3. Writes the challenge 18 flag to `/flag18.txt`
 
 ### Port binding
 - docker-compose.yml binds `"127.0.0.1:9300:9300"` — the app is only reachable through nginx. Keep it this way in production: Docker-published ports bypass `ufw`, so `"9300:9300"` would expose the intentionally vulnerable app directly on the public IP.
