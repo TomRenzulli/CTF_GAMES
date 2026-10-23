@@ -100,6 +100,6 @@ Then open **http://localhost:9300** and start hacking.
 
 ## 🏴 Credits
 
-Built by **Banshee** ([@TomRenzulli](https://github.com/TomRenzulli)) for the BERA Cyber CTF Club.
+Built by **Wooskii** ([@TomRenzulli](https://github.com/TomRenzulli)) for the BERA Cyber CTF Club.
 
 *Now go have some fun.* 🚩
