@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  beractf:
+    build: .
+    container_name: beractf
+    restart: unless-stopped
+    ports:
+      - "9300:9300"
+    environment:
+      - FLASK_ENV=production

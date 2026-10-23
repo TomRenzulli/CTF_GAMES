@@ -1,0 +1,7 @@
+TRANSMISSION INTERCEPT LOG
+========================================
+Timestamp: 2026-10-15T09:41:22Z
+Source: Unknown
+Message (encoded): 464c41477b6865785f6465636f6465645f796f755f666f756e645f6d657d
+========================================
+Tip: Each pair of characters is a hex byte. Try: echo '...' | xxd -r -p
