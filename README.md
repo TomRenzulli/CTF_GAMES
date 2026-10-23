@@ -1,4 +1,4 @@
-# 🐻 BERA Cyber Training Academy — CTF
+# BERA Cyber Training Academy — CTF
 
 > *Twenty locked doors. Twenty flags. Zero excuses.*
 
@@ -102,4 +102,4 @@ Then open **http://localhost:9300** and start hacking.
 
 Built by **Banshee** ([@TomRenzulli](https://github.com/TomRenzulli)) for the BERA Cyber CTF Club.
 
-*Now go find some flags.* 🚩
+*Now go have some fun.* 🚩
