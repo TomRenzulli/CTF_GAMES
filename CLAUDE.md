@@ -4,7 +4,7 @@
 A beginner-focused Capture The Flag (CTF) web platform built for the **BERA Cyber CTF Club** at Brookhaven National Laboratory. The platform runs as a single Flask app serving 20 progressive challenges that teach real cybersecurity skills. Students submit flags and accumulate points through a session-based scoreboard.
 
 **Live repo:** https://github.com/TomRenzulli/CTF_GAMES  
-**Handle:** Banshee / @TomRenzulli
+**Handle:** Wooskii / @TomRenzulli
 
 ---
 
