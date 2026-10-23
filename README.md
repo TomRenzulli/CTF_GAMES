@@ -61,6 +61,8 @@ Challenges get harder as you climb. Start at the bottom, end at the boss.
 
 ## 🧰 Recommended loadout
 
+New to the terminal? Start with the **[Beginner's Guide to Cyber & CTFs](BEGINNERS_GUIDE.md)**. It covers navigation, man pages, and every tool you'll need.
+
 You can solve most of this with a browser and a terminal. Handy extras:
 
 - **Browser DevTools** (`F12`): your new best friend
