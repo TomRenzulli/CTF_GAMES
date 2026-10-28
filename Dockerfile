@@ -5,6 +5,7 @@ WORKDIR /app
 # Install dependencies first (layer cache)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN useradd -m ctfuser
 
 # Copy everything
 COPY . .
@@ -16,5 +17,7 @@ RUN python challenge_files/generate.py
 RUN echo "FLAG{shell_metacharacters_execute_commands}" > /flag18.txt
 
 EXPOSE 9300
+
+USER ctfuser
 
 CMD ["python", "app.py"]

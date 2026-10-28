@@ -12,7 +12,7 @@ A beginner-focused Capture The Flag (CTF) web platform built for the **BERA Cybe
 - **Backend:** Python 3.11 / Flask 3.0.3
 - **Database:** SQLite (ephemeral, `/tmp/users.db` — seeded at startup for challenge 19)
 - **Container:** Docker (python:3.11-slim), orchestrated with docker-compose
-- **Production:** DigitalOcean Droplet → nginx reverse proxy → Flask on `127.0.0.1:9300`
+- **Production:** Linode Nanode (Newark NJ) → nginx reverse proxy → Flask on `127.0.0.1:9300`
 - **TLS:** Let's Encrypt via certbot --nginx
 - **DNS:** Cloudflare (A record → Droplet IP)
 
@@ -148,7 +148,7 @@ Or restrict by IP with `allow <club-cidr>; deny all;` in the `location` block.
 ```nginx
 server {
     listen 80;
-    server_name ctf.yourdomain.com;
+    server_name ctf.shouldiclickthislink.com;
     location / {
         auth_basic "BERA CTF";
         auth_basic_user_file /etc/nginx/.htpasswd;
@@ -162,7 +162,7 @@ server {
 
 ### TLS
 ```bash
-certbot --nginx -d ctf.yourdomain.com
+certbot --nginx -d ctf.shouldiclickthislink.com
 ```
 
 ### Cloudflare DNS
