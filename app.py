@@ -383,10 +383,6 @@ def init_db():
 
 init_db()
 
-# Write flag18 file
-with open("/flag18.txt", "w") as f:
-    f.write("FLAG{shell_metacharacters_execute_commands}\n")
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def get_solved():
     return session.get("solved", [])

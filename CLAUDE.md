@@ -14,7 +14,7 @@ A beginner-focused Capture The Flag (CTF) web platform built for the **BERA Cybe
 - **Container:** Docker (python:3.11-slim), orchestrated with docker-compose
 - **Production:** Linode Nanode (Newark NJ) → nginx reverse proxy → Flask on `127.0.0.1:9300`
 - **TLS:** Let's Encrypt via certbot --nginx
-- **DNS:** Cloudflare (A record → Droplet IP)
+- **DNS:** Cloudflare (A record → Linode IP)
 
 ---
 
@@ -125,7 +125,7 @@ docker compose up -d --build
 
 ## Deployment (Production)
 
-### Server setup (DigitalOcean Ubuntu 24.04)
+### Server setup (Linode Ubuntu 24.04)
 ```bash
 apt update && apt upgrade -y
 apt install -y docker.io docker-compose-v2 git nginx certbot python3-certbot-nginx
@@ -166,7 +166,7 @@ certbot --nginx -d ctf.shouldiclickthislink.com
 ```
 
 ### Cloudflare DNS
-- A record: `ctf` → Droplet IP
+- A record: `ctf` → Linode IP
 - Proxy: **DNS only (grey cloud)** during cert issuance; optionally enable orange cloud after
 - If proxied: set SSL/TLS mode to **Full (strict)**
 
