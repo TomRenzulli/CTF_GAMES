@@ -1,7 +1,7 @@
-# BERA Cyber Training Academy — CTF Platform
+# Cyber Training Academy — CTF Platform
 
 ## Project Overview
-A beginner-focused Capture The Flag (CTF) web platform built for the **BERA Cyber CTF Club** at Brookhaven National Laboratory. The platform runs as a single Flask app serving 20 progressive challenges that teach real cybersecurity skills. Students submit flags and accumulate points through a session-based scoreboard.
+A beginner-focused Capture The Flag (CTF) web platform built for the **Cyber CTF Club** at Brookhaven National Laboratory. The platform runs as a single Flask app serving 20 progressive challenges that teach real cybersecurity skills. Students submit flags and accumulate points through a session-based scoreboard.
 
 **Live repo:** https://github.com/TomRenzulli/CTF_GAMES  
 **Handle:** Wooskii / @TomRenzulli
@@ -150,7 +150,7 @@ server {
     listen 80;
     server_name ctf.shouldiclickthislink.com;
     location / {
-        auth_basic "BERA CTF";
+        auth_basic "Cyber CTF";
         auth_basic_user_file /etc/nginx/.htpasswd;
         proxy_pass http://127.0.0.1:9300;
         proxy_set_header Host $host;
