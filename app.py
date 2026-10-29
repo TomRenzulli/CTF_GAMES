@@ -1,5 +1,5 @@
 """
-BERA Cyber Training Academy — 20-Flag Beginner Progression CTF
+Cyber Training Academy — 20-Flag Beginner Progression CTF
 Single container, port 9300.
 Each flag teaches exactly one concept before the next builds on it.
 """
@@ -363,7 +363,7 @@ CHALLENGES = [
             ("Why chaining matters", "Real attacks are never a single trick. An adversary chains: OSINT → credential stuffing → session hijack → privilege escalation → data exfil. Defenders think in kill chains too (Lockheed Martin Cyber Kill Chain, MITRE ATT&CK). This challenge simulates that multi-step mindset."),
             ("The recon-to-exploit pipeline", "Every engagement follows the same flow: (1) Enumerate what exists, (2) Identify what's exposed, (3) Understand the mechanism, (4) Craft your input, (5) Escalate. The specific techniques change but the pipeline stays the same whether you're doing CTF, bug bounty, or a red team engagement."),
             ("Building your methodology", "As you do more CTFs and real-world assessments, you'll develop a personal methodology — a checklist of things you always try first. Robots.txt, source view, headers, cookies, and params are all standard first-pass checks before touching any web target."),
-            ("Where to go next", "You've completed the BERA Cyber Training Academy foundation track. Next steps: <a href='https://tryhackme.com' target='_blank'>TryHackMe</a> (guided rooms), <a href='https://hackthebox.com' target='_blank'>Hack The Box</a> (harder machines), <a href='https://portswigger.net/web-security' target='_blank'>PortSwigger Web Academy</a> (free, in-depth web), and BERA Cyber's advanced CTF tiers."),
+            ("Where to go next", "You've completed the Cyber Training Academy foundation track. Next steps: <a href='https://tryhackme.com' target='_blank'>TryHackMe</a> (guided rooms), <a href='https://hackthebox.com' target='_blank'>Hack The Box</a> (harder machines), <a href='https://portswigger.net/web-security' target='_blank'>PortSwigger Web Academy</a> (free, in-depth web), and the club's advanced CTF tiers."),
         ],
     },
 ]
@@ -451,7 +451,7 @@ code {
 
 HEADER_HTML = """
 <header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
-  <span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 BERA CYBER</span>
+  <span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span>
   <span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span>
   <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
     Score: <b style="color:var(--neon)">{{ score }}</b> /
@@ -465,9 +465,9 @@ HEADER_HTML = """
 INDEX_PAGE = """<!DOCTYPE html><html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BERA Cyber Training Academy</title>
+<title>Cyber Training Academy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Major+Mono+Display&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 """ + BASE_STYLE + """
 .hero {
@@ -477,7 +477,7 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
   background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(0,255,157,0.06), transparent 70%);
 }
 .hero h1 {
-  font-family: 'Major Mono Display', monospace;
+  font-weight: 700;
   font-size: clamp(1.6rem, 4vw, 2.8rem);
   color: var(--neon);
   text-shadow: 0 0 30px rgba(0,255,157,0.4);
@@ -544,7 +544,7 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
 <body>
 <!-- FLAG{source_code_tells_all} -->
 <header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
-  <span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 BERA CYBER</span>
+  <span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span>
   <span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span>
   <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
     Score: <b style="color:var(--neon)">{{ score }}</b> / {{ total }} pts &nbsp;|&nbsp;
@@ -553,7 +553,7 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
 </header>
 <div class="hero">
   <h1>Training Academy</h1>
-  <p>20 PROGRESSIVE CHALLENGES · BUILD SKILLS FROM ZERO · BERA CYBER CTF CLUB</p>
+  <p>20 PROGRESSIVE CHALLENGES · BUILD SKILLS FROM ZERO · CYBER CTF CLUB</p>
   <div class="progress-bar-wrap"><div class="progress-bar" style="width:{{ pct }}%"></div></div>
   <div class="stats">{{ score }} / {{ total }} points &nbsp;·&nbsp; {{ solved_count }} / 20 solved &nbsp;·&nbsp; {{ pct }}% complete</div>
 </div>
@@ -595,9 +595,9 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
 CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{ c.title }} · BERA Cyber</title>
+<title>{{ c.title }} · Cyber Training Academy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Major+Mono+Display&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 """ + BASE_STYLE + """
 .wrap { max-width: 760px; margin: 0 auto; padding: 2rem; }
@@ -721,7 +721,7 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
 </head>
 <body>
 <header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
-  <span style="font-size:1.2rem;font-weight:700;color:var(--neon);">🛡 BERA CYBER</span>
+  <span style="font-size:1.2rem;font-weight:700;color:var(--neon);">🛡 CYBER</span>
   <span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span>
   <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
     Score: <b style="color:var(--neon)">{{ score }}</b> pts
