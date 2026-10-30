@@ -550,6 +550,8 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
     Score: <b style="color:var(--neon)">{{ score }}</b> / {{ total }} pts &nbsp;|&nbsp;
     Solved: <b style="color:var(--neon)">{{ solved_count }}</b> / 20
   </span>
+  <a href="/" style="font-size:0.8rem;color:var(--dim);">Challenges</a>
+  <a href="/docs" style="font-size:0.8rem;color:var(--dim);">Documents</a>
 </header>
 <div class="hero">
   <h1>Training Academy</h1>
@@ -727,6 +729,7 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
     Score: <b style="color:var(--neon)">{{ score }}</b> pts
   </span>
   <a href="/" style="font-size:0.8rem;color:var(--dim);">← All Challenges</a>
+  <a href="/docs" style="font-size:0.8rem;color:var(--dim);">Documents</a>
 </header>
 <div class="wrap">
   <div class="cnum">CHALLENGE {{ '%02d'|format(c.id) }} of 20</div>
@@ -786,6 +789,53 @@ function toggleNotes(btn) {
 </body></html>
 """
 
+DOCS_PAGE = """<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Documents · Cyber Training Academy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+""" + BASE_STYLE + """
+.wrap { max-width: 760px; margin: 0 auto; padding: 2rem; }
+.page-title { font-size:1.5rem; font-weight:700; color:var(--neon); margin-bottom:0.3rem; }
+.page-sub { color:var(--dim); font-size:0.85rem; margin-bottom:1.5rem; }
+.doc-row {
+  display:flex; align-items:center; gap:1rem;
+  background:var(--surface); border:1px solid var(--border); border-radius:6px;
+  padding:0.8rem 1rem; margin-bottom:0.6rem;
+}
+.doc-name { color:var(--text); flex:1; }
+.doc-ext { color:var(--dim); font-size:0.72rem; letter-spacing:0.15em; }
+.empty { color:var(--dim); font-size:0.85rem; }
+</style>
+</head>
+<body>
+<header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
+  <span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span>
+  <span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span>
+  <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
+    Score: <b style="color:var(--neon)">{{ score }}</b> pts
+  </span>
+  <a href="/" style="font-size:0.8rem;color:var(--dim);">Challenges</a>
+  <a href="/docs" style="font-size:0.8rem;color:var(--dim);">Documents</a>
+</header>
+<div class="wrap">
+  <div class="page-title">Documents</div>
+  <div class="page-sub">One-pagers and reference material for the club.</div>
+  {% for d in docs %}
+  <div class="doc-row">
+    <span class="doc-name">{{ d.title }}</span>
+    <span class="doc-ext">{{ d.ext }}</span>
+    <a class="btn-link" href="/docs/{{ d.filename }}" target="_blank">Open</a>
+  </div>
+  {% else %}
+  <p class="empty">No documents yet.</p>
+  {% endfor %}
+</div>
+</body></html>
+"""
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -824,6 +874,28 @@ def challenge(cid):
 @app.route("/files/<path:filename>")
 def files(filename):
     return send_from_directory("/app/challenge_files", filename)
+
+
+# ── Documents ─────────────────────────────────────────────────────────────────
+DOCS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")
+
+@app.route("/docs")
+def docs():
+    names = sorted(os.listdir(DOCS_DIR)) if os.path.isdir(DOCS_DIR) else []
+    entries = []
+    for name in names:
+        if name.startswith(".") or not os.path.isfile(os.path.join(DOCS_DIR, name)):
+            continue
+        stem, ext = os.path.splitext(name)
+        entries.append({"filename": name,
+                        "title": stem.replace("_", " ").replace("-", " "),
+                        "ext": ext.lstrip(".").upper()})
+    return render_template_string(DOCS_PAGE, docs=entries, score=get_score())
+
+
+@app.route("/docs/<path:filename>")
+def doc_file(filename):
+    return send_from_directory(DOCS_DIR, filename)
 
 
 # ── Challenge 5: header endpoint ──────────────────────────────────────────────
