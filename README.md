@@ -2,7 +2,7 @@
 
 > *Twenty locked doors. Twenty flags. Zero excuses.*
 
-Welcome, recruit. This is the training ground of the ** Cyber CTF Club**: a beginner-friendly Capture The Flag platform where you learn real hacking skills by actually breaking things (the things we built to be broken, that is).
+Welcome, recruit. This is the training ground of the **Cyber CTF Club**: a beginner-friendly Capture The Flag platform where you learn real hacking skills by actually breaking things (the things we built to be broken, that is).
 
 No prior experience required. Curiosity mandatory. Snacks recommended.
 
