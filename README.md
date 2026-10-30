@@ -1,8 +1,8 @@
-# BERA Cyber Training Academy — CTF
+#  Cyber Training Academy — CTF
 
 > *Twenty locked doors. Twenty flags. Zero excuses.*
 
-Welcome, recruit. This is the training ground of the **BERA Cyber CTF Club**: a beginner-friendly Capture The Flag platform where you learn real hacking skills by actually breaking things (the things we built to be broken, that is).
+Welcome, recruit. This is the training ground of the ** Cyber CTF Club**: a beginner-friendly Capture The Flag platform where you learn real hacking skills by actually breaking things (the things we built to be broken, that is).
 
 No prior experience required. Curiosity mandatory. Snacks recommended.
 
@@ -102,6 +102,6 @@ Then open **http://localhost:9300** and start hacking.
 
 ## 🏴 Credits
 
-Built by **Wooskii** ([@TomRenzulli](https://github.com/TomRenzulli)) for the BERA Cyber CTF Club.
+Built by **Tom** ([@TomRenzulli](https://github.com/TomRenzulli)) for the BERA Cyber CTF Club.
 
 *Now go have some fun.* 🚩
