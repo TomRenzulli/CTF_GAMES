@@ -827,7 +827,7 @@ DOCS_PAGE = """<!DOCTYPE html><html lang="en">
   <div class="doc-row">
     <span class="doc-name">{{ d.title }}</span>
     <span class="doc-ext">{{ d.ext }}</span>
-    <a class="btn-link" href="/docs/{{ d.filename }}" target="_blank">Open</a>
+    <a class="btn-link" href="/docs/{{ d.filename|urlencode }}" target="_blank">Open</a>
   </div>
   {% else %}
   <p class="empty">No documents yet.</p>
