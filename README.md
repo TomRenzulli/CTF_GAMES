@@ -6,13 +6,6 @@ Welcome, recruit. This is the training ground of the **Cyber CTF Club**: a begin
 
 No prior experience required. Curiosity mandatory. Snacks recommended.
 
-```
-   ____  _____ ____      _       ____ _____ _____
-  | __ )| ____|  _ \    / \     / ___|_   _|  ___|
-  |  _ \|  _| | |_) |  / _ \   | |     | | | |_
-  | |_) | |___|  _ <  / ___ \  | |___  | | |  _|
-  |____/|_____|_| \_\/_/   \_\  \____| |_| |_|
-```
 
 ---
 
