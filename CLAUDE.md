@@ -29,6 +29,7 @@ BERACTF/
 ├── CLAUDE.md                 # This file
 ├── static/                   # Self-hosted JetBrains Mono (woff2) + fonts.css + OFL.txt
 ├── docs/                     # Help material shown on the /docs tab — drop files in here
+├── docs_src/                 # HTML+CSS sources for the quick-reference PDFs (regenerate, don't re-author)
 │   ├── Beginner's Guide to Cyber & CTFs.pdf
 │   ├── CTF_VM_Setup_Guide.pdf
 │   ├── Think_Like_a_Hacker_CTF.pdf
@@ -227,6 +228,16 @@ replaced. Hints are hidden once the challenge is solved.
 `TAKEAWAYS[id]` is one line shown in the solved banner, plus a prominent
 `.next-cta` to the next challenge (or back to the ladder on #20), and the Training
 Notes auto-expand. Solving used to display only a point total.
+
+### Writing a new club document
+Quick-reference PDFs are authored as HTML in `docs_src/` and printed with headless
+Chrome; `docs_src/README.md` has the exact command and the palette/type scale, which
+were extracted from the original `What_is_a_CTF.pdf` so new documents match the house
+style. Keep the source — restyle by editing CSS, don't re-author the PDF.
+
+Filenames matter: `/docs` derives the displayed title from the filename, turning `_`
+and `-` into spaces. `docs_src/` is deliberately **outside** `docs/`, so build sources
+aren't served as documents.
 
 ### Per-challenge further reading
 `DOC_LINKS[id]` lists PDF filenames from `docs/`. `_prepare_challenges()` resolves

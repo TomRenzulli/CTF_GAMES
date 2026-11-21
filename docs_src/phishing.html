@@ -1,0 +1,204 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>An Analyst's Guide to Phishing Emails</title>
+<link rel="stylesheet" href="style.css"></head><body>
+
+<div class="masthead">
+  <h1>An Analyst's Guide to Phishing Emails</h1>
+  <div class="kicker">Cyber Club Quick Reference · v1.0</div>
+</div>
+
+<p class="lede">
+Phishing is still the most common way intrusions start, and triaging a reported message is the
+most common task a junior analyst is handed. The work is methodical, not intuitive: the
+<b>headers</b> tell you where it came from, the <b>authentication results</b> tell you whether the
+sender is who they claim, the <b>links and attachments</b> tell you what it wanted. Nothing here
+requires you to open anything dangerous.
+</p>
+
+<div class="rule-strip">
+  Golden rule: <b>analyze statically, never interactively.</b> Read the raw source, decode
+  attachments on disk, and detonate only in an isolated sandbox. Clicking the link "just to see"
+  confirms your address is live and can burn the investigation.
+</div>
+
+<div class="row">
+  <div class="panel good">
+    <div class="panel-head"><h3 class="green">Do first</h3><span class="tag">Triage</span></div>
+    <ol class="tight">
+      <li>Get the <b>original message</b> &mdash; <code>.eml</code> or <code>.msg</code>, not a
+        screenshot or a forward. Forwarding destroys headers.</li>
+      <li>Open the <b>raw source</b> in a text editor.</li>
+      <li>Read <b>Received</b> headers bottom-up.</li>
+      <li>Read <b>Authentication-Results</b>.</li>
+      <li>Extract every <b>URL</b> and every <b>attachment hash</b>.</li>
+      <li>Decide: <b>malicious / spam / legitimate</b>, then contain and report.</li>
+    </ol>
+  </div>
+  <div class="panel warn">
+    <div class="panel-head"><h3 class="red">Never do</h3><span class="tag">Hard stops</span></div>
+    <ul class="tight">
+      <li><b>Never click the link</b> from a corporate or personal machine.</li>
+      <li><b>Never open the attachment</b> outside an isolated VM with no network.</li>
+      <li><b>Never reply</b>, and never use the unsubscribe link.</li>
+      <li><b>Never enable macros</b> &mdash; the prompt <i>is</i> the attack.</li>
+      <li><b>Never forward it normally</b> to colleagues &mdash; attach the original instead, or
+        you're phishing your own team.</li>
+      <li><b>Never paste live URLs</b> into chat. Defang first.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Reading the headers</h2>
+<div class="row">
+  <div style="flex:1.15">
+    <p style="margin-bottom:4pt">Every server that handles a message <b>prepends</b> its own
+      <code>Received:</code> line, so the newest hop is at the <b>top</b> and the origin is at the
+      <b>bottom</b>. Read upward to trace the path.</p>
+    <table>
+      <tr><th>Header</th><th>Trust</th><th>What it tells you</th></tr>
+      <tr><td><code>From:</code></td><td class="red">None</td><td>Free text chosen by the sender.
+        Display name and address are both trivially forged</td></tr>
+      <tr><td><code>Reply-To:</code></td><td class="red">None</td><td>Where a reply actually goes.
+        A mismatch with <code>From:</code> is a strong signal</td></tr>
+      <tr><td><code>Return-Path:</code></td><td class="amber">Some</td><td>The envelope sender
+        &mdash; what SPF actually checks, often different from <code>From:</code></td></tr>
+      <tr><td><code>Received:</code> (bottom)</td><td class="amber">Partial</td><td>Earliest hop
+        &mdash; closest to the true origin, but forgeable before it reached you</td></tr>
+      <tr><td><code>Received:</code> (yours)</td><td class="green"><b>High</b></td><td>Added by
+        <i>your own</i> infrastructure. This is the part that cannot be faked</td></tr>
+      <tr><td><code>Message-ID:</code></td><td class="amber">Some</td><td>Its domain should match
+        the sending infrastructure. Often forgotten by the attacker</td></tr>
+      <tr><td><code>Authentication-Results:</code></td><td class="green"><b>High</b></td><td>Your
+        server's verdict on SPF, DKIM and DMARC</td></tr>
+    </table>
+  </div>
+  <div class="panel" style="flex:0.85">
+    <div class="panel-head"><h3>Red flags in a header block</h3><span class="tag">Pattern</span></div>
+    <ul class="tight">
+      <li>Originating IP in a country or hosting ASN unrelated to the claimed sender.</li>
+      <li><code>Message-ID</code> domain &ne; <code>From</code> domain.</li>
+      <li><code>Reply-To</code> on a different domain &mdash; often a lookalike.</li>
+      <li>Display name of a real executive with a free-mail address behind it.</li>
+      <li>A hop count of one &mdash; sent directly from a script, not a mail system.</li>
+      <li>Timestamps inconsistent across hops.</li>
+      <li>Missing <code>DKIM-Signature</code> on a domain that normally signs everything.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>SPF, DKIM, DMARC &mdash; and why alignment is the point</h2>
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>SPF</h3><span class="tag">Is this IP allowed?</span></div>
+    <p>A DNS record lists which servers may send for a domain. The receiver checks the connecting
+      IP against it.</p>
+    <p class="muted" style="margin-top:3pt">Checks the <b>envelope</b> sender, not the
+      <code>From:</code> you see &mdash; which is exactly the gap DMARC closes.</p>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>DKIM</h3><span class="tag">Was it altered?</span></div>
+    <p>The sending domain signs the message with a private key; the receiver verifies with the
+      public key in DNS.</p>
+    <p class="muted" style="margin-top:3pt">Proves the message came from the signing domain and
+      wasn't modified. Survives forwarding better than SPF.</p>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>DMARC</h3><span class="tag">Does it line up?</span></div>
+    <p>Requires SPF or DKIM to pass <b>and align</b> with the visible <code>From:</code> domain,
+      then publishes a policy: <code>none</code>, <code>quarantine</code> or <code>reject</code>.</p>
+    <p class="muted" style="margin-top:3pt">Alignment is the crux &mdash; see below.</p>
+  </div>
+</div>
+<p class="muted" style="margin-top:-2pt;margin-bottom:7pt"><b>Why alignment decides it:</b> an
+attacker can trivially pass SPF for a domain <i>they</i> own &mdash; <code>evil.com</code> can
+publish any SPF record it likes, and the mail still says <code>From: payroll@bnl.gov</code>. What
+they cannot do is produce an <b>aligned</b> pass for <code>bnl.gov</code> without its DNS or
+signing key. So <code>spf=pass</code> alone means little; <code>dmarc=fail</code> on a message
+claiming a real organisation is close to conclusive. Check with
+<code>dig TXT _dmarc.example.com</code>.</p>
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>Link analysis</h3><span class="tag">Where it really goes</span></div>
+    <ul class="tight">
+      <li><b>Text &ne; destination.</b> <code>&lt;a href="X"&gt;Y&lt;/a&gt;</code> shows Y, goes
+        to X. Enumerate <i>every</i> href &mdash; real links are often included as decoys.</li>
+      <li><b>Read the registrable domain</b> &mdash; the last two labels before the TLD.
+        <code>login.microsoft.com.evil.ru</code> is <code>evil.ru</code>.</li>
+      <li><b>Homoglyphs &amp; typos:</b> <code>rn</code> for <code>m</code>, <code>0</code> for
+        <code>o</code>, Cyrillic lookalikes (punycode <code>xn--</code>).</li>
+      <li><b>Open redirects</b> on legitimate domains, and shorteners hiding the target.</li>
+      <li>Long subdomain chains push the real domain off a phone's address bar.</li>
+      <li><b>Defang before sharing:</b> <code>hxxp://evil[.]com</code>.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>Attachment triage</h3><span class="tag">Static first</span></div>
+    <ul class="tight">
+      <li><b>Decode, don't open.</b> Attachments are base64 text inside the message &mdash; extract
+        and inspect with zero execution risk.</li>
+      <li><b>Double extensions:</b> <code>invoice.pdf.bat</code> displays as
+        <code>invoice.pdf</code> because Windows hides known extensions.</li>
+      <li><b>High-risk types:</b> <code>.bat .exe .js .vbs .lnk .iso .img .hta .scr</code>, and
+        Office files with macros (<code>.docm</code>, <code>.xlsm</code>).</li>
+      <li><b>Hash it</b> (SHA-256) and check reputation before anything else.</li>
+      <li><b>Hidden PowerShell</b> (<code>-nop -w hidden -enc</code>) is a near-certain indicator.</li>
+      <li>Password-protected archives exist to defeat scanning, not to protect you.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Toolkit &amp; verdict</h2>
+<div class="row">
+  <div style="flex:1">
+    <table>
+      <tr><th>Task</th><th>Tool or command</th></tr>
+      <tr><td>Read headers in a browser</td><td>Google Message Header Analyzer · MXToolbox Header Analyzer</td></tr>
+      <tr><td>Parse a message and list parts</td><td><code>python3 -c "import email; m=email.message_from_file(open('x.eml')); [print(p.get_filename(), p.get_content_type()) for p in m.walk()]"</code></td></tr>
+      <tr><td>Pull every link out of the source</td><td><code>grep -o 'href="[^"]*"' message.eml</code></td></tr>
+      <tr><td>Decode an attachment</td><td><code>base64 -d part.b64 &gt; sample.bin</code> · <code>munpack</code></td></tr>
+      <tr><td>Hash it</td><td><code>sha256sum sample.bin</code></td></tr>
+      <tr><td>Check a URL or hash safely</td><td>VirusTotal · urlscan.io · Hybrid Analysis · Any.Run</td></tr>
+      <tr><td>Check sender policy</td><td><code>dig TXT example.com</code> · <code>dig TXT _dmarc.example.com</code></td></tr>
+      <tr><td>Office macro analysis</td><td><code>olevba</code> / <code>oletools</code></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>Reaching a verdict</h3><span class="tag">Then act</span></div>
+    <ul class="tight">
+      <li><b class="red">Malicious</b> &mdash; auth fails + deceptive link or weaponized
+        attachment. Block sender/domain/URL, hunt for other recipients and anyone who clicked,
+        reset credentials if any were entered, report to your IR process.</li>
+      <li><b class="amber">Suspicious</b> &mdash; mixed signals. Escalate with your evidence;
+        don't release to the user yet.</li>
+      <li><b class="green">Legitimate</b> &mdash; auth aligned, links consistent, context expected.
+        Release and tell the reporter they did the right thing by asking.</li>
+    </ul>
+    <p class="muted" style="margin-top:3pt"><b>Always praise the report.</b> An analyst who makes
+      reporting feel costly gets fewer reports &mdash; and the one that goes unreported is the one
+      that lands.</p>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>Pressure tactics to recognise</h3><span class="tag">Social engineering</span></div>
+    <ul class="tight">
+      <li><b>Urgency &amp; deadlines</b> &mdash; "expires in 4 hours", "account closing today".</li>
+      <li><b>Authority</b> &mdash; impersonating IT, HR, payroll or an executive.</li>
+      <li><b>Fear</b> &mdash; security alert, legal threat, failed payment.</li>
+      <li><b>Curiosity / reward</b> &mdash; bonus letters, parcel notices, shared documents.</li>
+      <li><b>Secrecy</b> &mdash; "don't discuss this with anyone" is the tell in gift-card and
+        wire-transfer fraud.</li>
+      <li><b>Routine mimicry</b> &mdash; the dangerous ones look utterly boring: a quarantine
+        digest, an invoice, a shared file.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="footer">
+  <div><b>Report internally first</b> &mdash; your IR team, then national reporting
+    (CISA / NCSC) where applicable</div>
+  <div class="right">Practice it: the <b>Phishing &amp; Email Forensics</b> track on the CTF site<br>Questions? Ping the cyber club channel.</div>
+</div>
+</body></html>

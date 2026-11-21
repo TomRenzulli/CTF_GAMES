@@ -1,0 +1,187 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>OT 101: From IT/Cyber to Operational Technology</title>
+<link rel="stylesheet" href="style.css"></head><body>
+
+<div class="masthead">
+  <h1>OT 101: From IT/Cyber to OT</h1>
+  <div class="kicker">Cyber Club Quick Reference · v1.0</div>
+</div>
+
+<p class="lede">
+Everything you know about security still applies in Operational Technology &mdash; but the
+<b>priorities invert</b>. IT protects information. OT protects a <b>physical process</b>: pumps,
+breakers, valves, reactors. When IT fails you lose data; when OT fails you lose containment, or
+someone gets hurt. That single difference drives every unfamiliar rule you are about to meet,
+including the ones that look like negligence until you understand them.
+</p>
+
+<div class="rule-strip">
+  The one-line translation: <b>IT ranks Confidentiality first. OT ranks Safety first.</b>
+  Memorize the swap &mdash; CIA becomes SRP &mdash; and most OT decisions stop being surprising.
+</div>
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>CIA &mdash; the IT triad</h3><span class="tag">What you know</span></div>
+    <ul class="tight">
+      <li><b class="navy">Confidentiality</b> &mdash; keep data from those who shouldn't see it.
+          The breach headline. Usually ranked first.</li>
+      <li><b class="navy">Integrity</b> &mdash; data is accurate and unaltered.</li>
+      <li><b class="navy">Availability</b> &mdash; systems are up when needed. Often the
+          <i>sacrifice</i>: patch now, reboot now, take the outage.</li>
+    </ul>
+    <p class="muted" style="margin-top:3pt"><b>Worst case:</b> data is stolen, leaked or ransomed.
+      Recovery is restore-from-backup and notify.</p>
+  </div>
+  <div class="panel good">
+    <div class="panel-head"><h3 class="green">SRP &mdash; the OT triad</h3><span class="tag">What governs plant</span></div>
+    <ul class="tight">
+      <li><b class="green">Safety</b> &mdash; nobody is injured, nothing is released. Outranks
+          everything, always. Not negotiable by an individual.</li>
+      <li><b class="green">Reliability</b> &mdash; the process runs correctly and predictably.
+          Bad data driving a real actuator is a physical event.</li>
+      <li><b class="green">Performance</b> &mdash; throughput, quota, efficiency. Last. The thing
+          you give up, not the thing you protect.</li>
+    </ul>
+    <p class="muted" style="margin-top:3pt"><b>Worst case:</b> injury, fire, environmental release,
+      grid instability. There is no restore-from-backup for that.</p>
+  </div>
+</div>
+
+<h2>Why your IT instincts misfire in OT</h2>
+<div class="row">
+  <div style="flex:1">
+    <table>
+      <tr><th>IT instinct</th><th>Why it breaks in OT</th><th>Do this instead</th></tr>
+      <tr><td>Patch immediately</td><td>Firmware change may void safety certification; the
+        maintenance window is hours per <i>year</i></td><td>Compensating controls: segment,
+        allow-list, monitor. Patch at the scheduled outage</td></tr>
+      <tr><td>Run an active scan</td><td>A single malformed packet can fault a PLC. Scans have
+        tripped production lines</td><td>Passive monitoring (SPAN/TAP). Active scanning only on
+        an offline twin</td></tr>
+      <tr><td>Install EDR/AV everywhere</td><td>Unsupported OS, vendor forbids it, CPU headroom
+        doesn't exist</td><td>Network-level detection; host controls only where vendor-approved</td></tr>
+      <tr><td>Force 90-day password rotation</td><td>Shared console creds are written on the
+        panel; rotation during an alarm costs seconds that matter</td><td>Physical access control
+        + logged jump host; rotate on personnel change</td></tr>
+      <tr><td>Reboot to fix it</td><td>Restarting a controller can mean restarting a
+        <i>process</i> &mdash; hours of lost batch, or an unsafe transient</td><td>Never touch
+        without operations. The operator owns the process</td></tr>
+      <tr><td>Multi-factor everywhere</td><td>Gloved hands, no phone in the control room, a
+        response deadline measured in seconds</td><td>Strong perimeter auth; inside the zone,
+        physical and procedural controls</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>The Purdue Model</h3><span class="tag">Zones &amp; conduits</span></div>
+    <ul class="tight">
+      <li><b>L4/5 Enterprise</b> &mdash; IT, email, ERP. Internet-facing.</li>
+      <li><b>L3.5 DMZ</b> &mdash; the <i>conduit</i>. Historian replica, jump host, patch relay.
+        <b class="navy">All IT&harr;OT traffic terminates here.</b></li>
+      <li><b>L3 Operations</b> &mdash; historians, engineering workstations.</li>
+      <li><b>L2 Supervisory</b> &mdash; HMIs, SCADA servers.</li>
+      <li><b>L1 Control</b> &mdash; PLCs, RTUs, DCS controllers.</li>
+      <li><b>L0 Process</b> &mdash; sensors and actuators. Physics lives here.</li>
+    </ul>
+    <p class="muted" style="margin-top:3pt">Ask of any flow: which zones does it cross, and does it
+      stop in the DMZ? A path from L4 to L1 is the finding.</p>
+  </div>
+  <div class="panel warn">
+    <div class="panel-head"><h3 class="amber">Safety Instrumented Systems</h3><span class="tag">Keep separate</span></div>
+    <p>An <b>SIS</b> exists to force the process into a safe state when the control system fails
+      or is wrong. It is deliberately <b>separate hardware on a separate network</b> from the
+      DCS/PLC layer.</p>
+    <ul class="tight" style="margin-top:3pt">
+      <li>Compromising the control network must not defeat the layer whose only job is preventing harm.</li>
+      <li><b>Interlocks are safety functions</b>, not obstacles. Bypassing one to hit quota trades
+        Safety for Performance &mdash; an inversion of SRP.</li>
+      <li>Bypasses require two-person authorization <i>because</i> the consequence is physical.</li>
+      <li>TRISIS/TRITON (2017) targeted an SIS directly &mdash; the first malware built to disable
+        a safety system.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Protocols you will actually meet</h2>
+<table>
+  <tr><th>Protocol</th><th>Port</th><th>Where</th><th>Authentication</th><th>What to know</th></tr>
+  <tr><td><b>Modbus/TCP</b></td><td><code>502</code></td><td>Everywhere; 1979 design</td>
+      <td class="red"><b>None</b></td>
+      <td>Any host that reaches it can issue any command. Function <code>0x03</code> read,
+          <code>0x05</code> write coil, <code>0x06</code> write register</td></tr>
+  <tr><td><b>DNP3</b></td><td><code>20000</code></td><td>Electric / water utilities</td>
+      <td class="amber">Optional (SAv5)</td><td>Rarely enabled in the field; assume none</td></tr>
+  <tr><td><b>EtherNet/IP &amp; CIP</b></td><td><code>44818</code>, <code>2222</code></td>
+      <td>Rockwell / Allen-Bradley</td><td class="red">Weak</td>
+      <td>CIP services can stop a CPU or download logic</td></tr>
+  <tr><td><b>S7comm</b></td><td><code>102</code></td><td>Siemens S7</td>
+      <td class="amber">Weak / optional</td><td>Targeted by Stuxnet; logic upload/download</td></tr>
+  <tr><td><b>PROFINET</b></td><td>L2 + <code>34962-4</code></td><td>Siemens fieldbus</td>
+      <td class="red"><b>None</b></td><td>Layer-2; switch security matters more than IP ACLs</td></tr>
+  <tr><td><b>OPC UA</b></td><td><code>4840</code></td><td>Modern integration layer</td>
+      <td class="green"><b>Yes</b> &mdash; certs, encryption</td>
+      <td>The one built with security. Verify it isn't running in <code>None</code> security mode</td></tr>
+  <tr><td><b>Telnet / FTP / SNMPv1</b></td><td><code>23</code>, <code>21</code>, <code>161</code></td>
+      <td>Legacy gateways</td><td class="red">Cleartext</td>
+      <td>Credentials recoverable from any capture. A finding on sight</td></tr>
+</table>
+<p class="muted" style="margin-top:3pt"><b>The pattern:</b> these protocols aren't misconfigured
+&mdash; they have <i>no concept of a credential</i>. You cannot patch that. Security has to come
+from the network around them, which is why segmentation does the heavy lifting in every OT
+architecture.</p>
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>First questions on any OT review</h3><span class="tag">Start here</span></div>
+    <ol class="tight">
+      <li><b>What can reach port 502</b> (or 102, or 44818) &mdash; and from which zone?
+        Reachability <i>is</i> the vulnerability.</li>
+      <li>Is there a real <b>L3.5 DMZ</b>, or a firewall rule with <code>any&rarr;any</code> in it?</li>
+      <li>Is the <b>SIS</b> physically and logically separate from the control network?</li>
+      <li>Is there <b>remote vendor access</b>? Always-on VPN, or brokered and time-boxed?</li>
+      <li>Who is <b>monitoring</b>, and does anyone alert on a first-seen <i>write</i> command?</li>
+      <li>Does the <b>change-control</b> process include an SRP impact review?</li>
+    </ol>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>Vocabulary</h3><span class="tag">Decoder ring</span></div>
+    <ul class="tight">
+      <li><b>PLC</b> &mdash; programmable logic controller; runs the control loop.</li>
+      <li><b>RTU</b> &mdash; remote terminal unit; a PLC at a remote site.</li>
+      <li><b>HMI</b> &mdash; the operator's screen.</li>
+      <li><b>DCS</b> &mdash; distributed control system; plant-wide, process industries.</li>
+      <li><b>SCADA</b> &mdash; supervisory control and data acquisition; wide-area oversight.</li>
+      <li><b>Historian</b> &mdash; time-series database of process values.</li>
+      <li><b>Coil / register</b> &mdash; a boolean output / a numeric value in a PLC.</li>
+      <li><b>Setpoint</b> &mdash; the target value the loop drives toward.</li>
+      <li><b>Interlock</b> &mdash; logic making an unsafe state unreachable.</li>
+      <li><b>Air gap</b> &mdash; claimed far more often than it exists. Verify.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Incidents worth knowing</h2>
+<div class="cols2">
+  <ul class="tight">
+    <li><b>Stuxnet</b> (2010) &mdash; damaged centrifuges by altering S7 logic while showing
+      operators normal values. Proved software can break hardware.</li>
+    <li><b>Ukraine grid</b> (2015, 2016) &mdash; attackers operated breakers through
+      <i>legitimate</i> control protocols. No exploit needed, only reachability.</li>
+    <li><b>TRISIS / TRITON</b> (2017) &mdash; first malware aimed at a safety system; a failed
+      payload triggered the plant trip that exposed it.</li>
+    <li><b>Colonial Pipeline</b> (2021) &mdash; IT ransomware, yet operations stopped. OT impact
+      does not require OT compromise.</li>
+    <li><b>Oldsmar water</b> (2021) &mdash; shared remote-access creds; an operator watched the
+      setpoint for a chemical move on screen.</li>
+  </ul>
+</div>
+
+<div class="footer">
+  <div><b>Standards:</b> IEC 62443 (zones &amp; conduits) · NIST SP 800-82 Rev.3 · NERC CIP (electric)
+    · ISA-95 / Purdue</div>
+  <div class="right">Practice it: the <b>OT / ICS</b> track on the CTF site<br>Questions? Ping the cyber club channel.</div>
+</div>
+</body></html>

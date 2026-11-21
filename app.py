@@ -936,22 +936,22 @@ TAKEAWAYS.update({
 })
 
 DOC_LINKS.update({
-    21: ["CTF_VM_Setup_Guide.pdf"],
-    22: ["CTF_VM_Setup_Guide.pdf"],
-    23: ["Think_Like_a_Hacker_CTF.pdf"],
-    24: ["Think_Like_a_Hacker_CTF.pdf"],
+    21: ["Getting_Started_with_Wireshark.pdf", "CTF_VM_Setup_Guide.pdf"],
+    22: ["Getting_Started_with_Wireshark.pdf"],
+    23: ["Getting_Started_with_Wireshark.pdf", "Think_Like_a_Hacker_CTF.pdf"],
+    24: ["Getting_Started_with_Wireshark.pdf", "Think_Like_a_Hacker_CTF.pdf"],
     25: ["Think_Like_a_Hacker_CTF.pdf"],
     26: ["Think_Like_a_Hacker_CTF.pdf"],
     27: ["Think_Like_a_Hacker_CTF.pdf"],
     28: ["Think_Like_a_Hacker_CTF.pdf"],
-    29: ["Beginner's Guide to Cyber & CTFs.pdf"],
-    30: ["Beginner's Guide to Cyber & CTFs.pdf"],
-    31: ["Think_Like_a_Hacker_CTF.pdf"],
-    32: ["CTF_VM_Setup_Guide.pdf"],
-    33: ["CTF_VM_Setup_Guide.pdf"],
-    34: ["Think_Like_a_Hacker_CTF.pdf"],
-    35: ["CTF_VM_Setup_Guide.pdf"],
-    36: ["What_is_a_CTF.pdf"],
+    29: ["Analysts_Guide_to_Phishing_Emails.pdf"],
+    30: ["Analysts_Guide_to_Phishing_Emails.pdf"],
+    31: ["Analysts_Guide_to_Phishing_Emails.pdf"],
+    32: ["Analysts_Guide_to_Phishing_Emails.pdf"],
+    33: ["OT_101_From_IT_to_OT.pdf", "Getting_Started_with_Wireshark.pdf"],
+    34: ["OT_101_From_IT_to_OT.pdf", "Getting_Started_with_Wireshark.pdf"],
+    35: ["OT_101_From_IT_to_OT.pdf", "Getting_Started_with_Wireshark.pdf"],
+    36: ["OT_101_From_IT_to_OT.pdf"],
 })
 
 

@@ -1,0 +1,161 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Getting Started with Wireshark</title>
+<link rel="stylesheet" href="style.css"></head><body>
+
+<div class="masthead">
+  <h1>Getting Started with Wireshark</h1>
+  <div class="kicker">Cyber Club Quick Reference · v1.0</div>
+</div>
+
+<p class="lede">
+Wireshark shows you exactly what crossed the wire &mdash; no vendor summary, no log abstraction,
+just bytes with a timestamp. It is the <b>ground truth</b> tool: when a log and a capture disagree,
+the capture wins. This guide gets you from first launch to answering real questions: who logged in,
+what left the network, and what that unexpected host was doing.
+</p>
+
+<div class="rule-strip">
+  The single most useful habit: <b>stop reading individual packets.</b> Right-click &rarr;
+  <b>Follow &rarr; TCP Stream</b> and read the <i>conversation</i>. Most beginners stall because
+  they grep packets for a string that was split across three of them.
+</div>
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>Capture filters</h3><span class="tag">Before &mdash; BPF syntax</span></div>
+    <p>Applied <b>while capturing</b>. Packets that don't match are <b class="red">discarded
+      forever</b>. Use only when you must limit volume.</p>
+    <ul class="tight" style="margin-top:3pt">
+      <li><code>host 192.168.20.31</code></li>
+      <li><code>port 502</code> &nbsp;·&nbsp; <code>tcp port 80 or port 443</code></li>
+      <li><code>net 192.168.20.0/24</code></li>
+      <li><code>not arp and not broadcast</code></li>
+    </ul>
+  </div>
+  <div class="panel good">
+    <div class="panel-head"><h3 class="green">Display filters</h3><span class="tag">After &mdash; Wireshark syntax</span></div>
+    <p>Applied <b>to an existing capture</b>. Hides packets without deleting them. <b>This is the
+      one you'll use 95% of the time.</b></p>
+    <ul class="tight" style="margin-top:3pt">
+      <li><code>ip.addr == 192.168.20.31</code></li>
+      <li><code>tcp.port == 502</code> &nbsp;·&nbsp; <code>http || dns</code></li>
+      <li><code>http.request.method == "POST"</code></li>
+      <li><code>frame contains "password"</code></li>
+    </ul>
+  </div>
+</div>
+<p class="muted" style="margin-top:-3pt;margin-bottom:7pt"><b>The classic mistake:</b> typing
+<code>port 80</code> into the display filter bar (invalid &mdash; it turns red) or
+<code>tcp.port == 80</code> into the capture filter box (also invalid). Two different syntaxes.
+Capture filters use <b>spaces</b>; display filters use <b><code>==</code></b>.</p>
+
+<h2>The three panes</h2>
+<div class="row">
+  <div style="flex:1">
+    <table>
+      <tr><th>Pane</th><th>Shows</th><th>Use it to</th></tr>
+      <tr><td><b>Packet list</b> (top)</td><td>One row per packet: time, source, destination,
+        protocol, length, info summary</td><td>Scan for patterns &mdash; bursts, repeated SYNs,
+        an unfamiliar protocol, an unexpected peer</td></tr>
+      <tr><td><b>Packet details</b> (middle)</td><td>The selected packet decoded layer by layer:
+        Frame &rarr; Ethernet &rarr; IP &rarr; TCP &rarr; application</td><td>Expand a layer to
+        read field values. <b>Right-click a field &rarr; Apply as Filter</b> &mdash; the fastest
+        way to learn filter syntax</td></tr>
+      <tr><td><b>Packet bytes</b> (bottom)</td><td>Raw hex and ASCII</td><td>Spot magic bytes and
+        readable strings the dissector didn't label</td></tr>
+    </table>
+  </div>
+</div>
+
+<h2>Display filters worth memorizing</h2>
+<p class="muted" style="margin-bottom:4pt">Combine with <code>&amp;&amp;</code> (and), <code>||</code> (or), <code>!</code> (not). Build them by right-clicking a field in the details pane rather than typing from memory.</p>
+<table>
+  <tr><th>Goal</th><th>Filter</th></tr>
+  <tr><td>Traffic to or from one host</td><td><code>ip.addr == 10.0.0.5</code></td></tr>
+  <tr><td>One conversation only</td><td><code>ip.addr==10.0.0.5 &amp;&amp; ip.addr==10.0.0.9</code></td></tr>
+  <tr><td>Web form submissions (logins live here)</td><td><code>http.request.method == "POST"</code></td></tr>
+  <tr><td>Every DNS question asked</td><td><code>dns.flags.response == 0</code></td></tr>
+  <tr><td>Open ports found by a scan</td><td><code>tcp.flags.syn==1 &amp;&amp; tcp.flags.ack==1</code></td></tr>
+  <tr><td>Connections refused (closed ports)</td><td><code>tcp.flags.reset == 1</code></td></tr>
+  <tr><td>Any packet containing a string</td><td><code>frame contains "FLAG{"</code></td></tr>
+  <tr><td>Cleartext protocols, all at once</td><td><code>ftp || telnet || http || pop || imap || smtp</code></td></tr>
+  <tr><td>Industrial control traffic</td><td><code>modbus</code> &nbsp;·&nbsp; <code>s7comm</code> &nbsp;·&nbsp; <code>dnp3</code></td></tr>
+  <tr><td>Only packets carrying data</td><td><code>tcp.len &gt; 0</code></td></tr>
+  <tr><td>Signs of trouble</td><td><code>tcp.analysis.flags</code> (retransmissions, resets, dup ACKs)</td></tr>
+</table>
+
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>Statistics menu</h3><span class="tag">Where to start a capture</span></div>
+    <ul class="tight">
+      <li><b>Protocol Hierarchy</b> &mdash; what's in here, by percentage. <b>Always open this
+        first.</b> An unexpected protocol at 0.2% is often the whole story.</li>
+      <li><b>Conversations</b> &mdash; every pair of hosts, sorted by bytes. Finds the top talker
+        and the one host that shouldn't be talking at all.</li>
+      <li><b>Endpoints</b> &mdash; every address seen; the Map tab plots external IPs.</li>
+      <li><b>I/O Graph</b> &mdash; traffic over time. Beaconing shows up as a regular comb.</li>
+      <li><b>Capture File Properties</b> &mdash; duration, packet count, drops.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>File &gt; Export Objects</h3><span class="tag">Pull files out</span></div>
+    <p>Reassembles and saves files that were transferred in the clear &mdash; from
+      <b>HTTP</b>, <b>SMB</b>, <b>FTP-DATA</b>, <b>TFTP</b> or <b>IMF</b> (email).</p>
+    <ul class="tight" style="margin-top:3pt">
+      <li>Recover a malware sample pulled down over HTTP.</li>
+      <li>Recover documents exfiltrated over SMB.</li>
+      <li><b class="red">Hash before you open.</b> Treat anything recovered as live malware.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>tshark &mdash; the command line</h2>
+<p class="muted" style="margin-bottom:4pt">Same engine, scriptable. Essential once you're grepping
+across many captures, and the only option over SSH.</p>
+<table>
+  <tr><th>Task</th><th>Command</th></tr>
+  <tr><td>Summary of every packet</td><td><code>tshark -r capture.pcap</code></td></tr>
+  <tr><td>Apply a display filter</td><td><code>tshark -r capture.pcap -Y 'http.request.method=="POST"'</code></td></tr>
+  <tr><td>Print only chosen fields</td><td><code>tshark -r c.pcap -T fields -e ip.src -e dns.qry.name</code></td></tr>
+  <tr><td>Follow a TCP stream</td><td><code>tshark -r c.pcap -qz follow,tcp,ascii,0</code></td></tr>
+  <tr><td>Protocol breakdown</td><td><code>tshark -r c.pcap -qz io,phs</code></td></tr>
+  <tr><td>Conversation list</td><td><code>tshark -r c.pcap -qz conv,tcp</code></td></tr>
+  <tr><td>Capture file facts</td><td><code>capinfos capture.pcap</code></td></tr>
+</table>
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>Three real workflows</h3><span class="tag">Do these</span></div>
+    <ol class="tight">
+      <li><b>Find credentials.</b> Filter <code>http.request.method=="POST"</code> &rarr; Follow
+        HTTP Stream &rarr; read the body. Repeat for <code>ftp</code> and <code>telnet</code>.</li>
+      <li><b>Spot exfiltration.</b> Statistics &rarr; Conversations, sort by bytes. Then check
+        DNS: <code>dns.flags.response==0</code> and look for long random subdomains repeating to
+        one domain.</li>
+      <li><b>Confirm a scan.</b> One source, many destination ports, SYNs with no data. Find what
+        answered with <code>tcp.flags.syn==1 &amp;&amp; tcp.flags.ack==1</code>, then follow that
+        stream for the service banner.</li>
+    </ol>
+  </div>
+  <div class="panel warn">
+    <div class="panel-head"><h3 class="amber">Capture hygiene &amp; ethics</h3><span class="tag">Read this</span></div>
+    <ul class="tight">
+      <li><b>Get authorization in writing.</b> Capturing traffic on a network you don't own is
+        illegal in most jurisdictions &mdash; it is wiretapping.</li>
+      <li>Captures contain credentials and personal data. Treat a <code>.pcap</code> as
+        <b>sensitive evidence</b>: encrypt it, don't paste it in chat.</li>
+      <li>You only see traffic that reaches your NIC. On a switched network use a <b>SPAN port</b>
+        or <b>TAP</b> &mdash; not an attack.</li>
+      <li>In OT, <b>never</b> capture actively. Passive TAP only.</li>
+      <li>TLS is opaque without keys. You still get IPs, SNI, sizes and timing.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="footer">
+  <div><b>Practice captures:</b> wireshark.org/SampleCaptures · malware-traffic-analysis.net ·
+    the <b>Network Traffic Analysis</b> track on the CTF site</div>
+  <div class="right">Install: wireshark.org (tick <i>Npcap</i> on Windows)<br>Questions? Ping the cyber club channel.</div>
+</div>
+</body></html>

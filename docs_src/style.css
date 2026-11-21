@@ -1,0 +1,98 @@
+/* Cyber Club Quick Reference — matches the palette and type scale extracted
+   from the existing one-pagers (What_is_a_CTF.pdf et al). */
+@page { size: Letter; margin: 0.45in 0.5in; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Liberation Sans", Arial, Helvetica, sans-serif;
+  font-size: 10.66pt;
+  line-height: 1.33;
+  color: #1a1a1a;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+code, .mono { font-family: "DejaVu Sans Mono", "Menlo", monospace; font-size: 0.93em; }
+code {
+  background: #f0f2f5;
+  border: 1px solid #e1e6eb;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* ── masthead ───────────────────────────────────────────────────────────── */
+.masthead {
+  display: flex; align-items: baseline; gap: 10pt;
+  border-bottom: 1.4pt solid #0a3d62;
+  padding-bottom: 4pt; margin-bottom: 6pt;
+}
+h1 { font-size: 21.33pt; color: #0a3d62; letter-spacing: -0.3pt; line-height: 1.1; }
+.kicker { margin-left: auto; font-size: 9.33pt; color: #555; white-space: nowrap; }
+.lede { font-size: 10.66pt; margin-bottom: 8pt; text-align: justify; }
+.lede b, .lede strong { color: #0a3d62; }
+
+/* ── layout ─────────────────────────────────────────────────────────────── */
+.row { display: flex; gap: 9pt; margin-bottom: 7pt; }
+.row > * { flex: 1; min-width: 0; }
+h2 {
+  font-size: 13.33pt; color: #0a3d62;
+  border-bottom: 0.7pt solid #d0d7de;
+  padding-bottom: 2pt; margin-bottom: 5pt;
+}
+.panel {
+  background: #f4f7fa; border: 0.7pt solid #d0d7de;
+  border-radius: 3pt; padding: 6pt 8pt;
+}
+.panel.warn { background: #fff8e1; border-color: #e6d9a8; }
+.panel.good { background: #f2f8f3; border-color: #cfe3d4; }
+.panel-head { display: flex; align-items: baseline; gap: 6pt; margin-bottom: 4pt; }
+h3 { font-size: 11.33pt; color: #0a3d62; }
+h3.green { color: #1e5e2c; }
+h3.red { color: #c0392b; }
+h3.amber { color: #5a3e00; }
+.tag {
+  margin-left: auto; font-size: 8pt; text-transform: uppercase;
+  letter-spacing: 0.6pt; color: #555; white-space: nowrap;
+}
+.cols2 { column-count: 2; column-gap: 12pt; }
+.cols3 { column-count: 3; column-gap: 10pt; }
+
+/* ── lists ──────────────────────────────────────────────────────────────── */
+ul, ol { margin-left: 12pt; }
+li { margin-bottom: 1.8pt; break-inside: avoid; }
+ul.tight li { margin-bottom: 1pt; }
+.lbl { font-weight: bold; }
+.navy { color: #0a3d62; }
+.green { color: #1e5e2c; }
+.amber { color: #5a3e00; }
+.red { color: #c0392b; }
+.muted { color: #555; }
+
+/* ── tables ─────────────────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; font-size: 9.6pt; }
+th {
+  text-align: left; background: #0a3d62; color: #fff;
+  padding: 2.5pt 4pt; font-size: 8.6pt;
+  text-transform: uppercase; letter-spacing: 0.4pt;
+}
+td { padding: 2.2pt 4pt; border-bottom: 0.5pt solid #e1e6eb; vertical-align: top; }
+tr:nth-child(even) td { background: #f7f9fb; }
+td code { background: none; border: none; padding: 0; }
+
+/* ── callouts & footer ──────────────────────────────────────────────────── */
+.rule-strip {
+  background: #0a3d62; color: #fff; padding: 4pt 8pt;
+  border-radius: 3pt; margin-bottom: 7pt; font-size: 10.66pt;
+}
+.rule-strip b { color: #ffe08a; }
+.footer {
+  display: flex; gap: 10pt; margin-top: 7pt;
+  border-top: 0.7pt solid #d0d7de; padding-top: 3.5pt;
+  font-size: 9.33pt; color: #555;
+}
+.footer .right { margin-left: auto; text-align: right; }
+
+/* ── pagination control: never split a panel, row, table or heading ──────── */
+.row, .panel, table, .rule-strip { break-inside: avoid; page-break-inside: avoid; }
+h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+tr { break-inside: avoid; }
+thead { display: table-header-group; }
+.footer { break-inside: avoid; }
