@@ -948,10 +948,10 @@ DOC_LINKS.update({
     30: ["Analysts_Guide_to_Phishing_Emails.pdf"],
     31: ["Analysts_Guide_to_Phishing_Emails.pdf"],
     32: ["Analysts_Guide_to_Phishing_Emails.pdf"],
-    33: ["OT_101_From_IT_to_OT.pdf", "Getting_Started_with_Wireshark.pdf"],
-    34: ["OT_101_From_IT_to_OT.pdf", "Getting_Started_with_Wireshark.pdf"],
-    35: ["OT_101_From_IT_to_OT.pdf", "Getting_Started_with_Wireshark.pdf"],
-    36: ["OT_101_From_IT_to_OT.pdf"],
+    33: ["OT_101_From_IT_to_OT.pdf", "OT_ICS_Hacking_Protocols_and_Tools.pdf", "Getting_Started_with_Wireshark.pdf"],
+    34: ["OT_101_From_IT_to_OT.pdf", "OT_ICS_Hacking_Protocols_and_Tools.pdf"],
+    35: ["OT_ICS_Hacking_Protocols_and_Tools.pdf", "Getting_Started_with_Wireshark.pdf"],
+    36: ["OT_101_From_IT_to_OT.pdf", "OT_ICS_Hacking_Protocols_and_Tools.pdf"],
 })
 
 
