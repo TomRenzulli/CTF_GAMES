@@ -473,10 +473,22 @@ HEADER_HTML = """
 </header>
 """
 
+FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#05060a"/>
+  <path d="M32 7 54 15v16c0 13-9 22-22 26C19 53 10 44 10 31V15L32 7z"
+        fill="none" stroke="#00ff9d" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M22 32l7 8 14-16" fill="none" stroke="#2de2ff" stroke-width="5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+"""
+
+FAVICON_LINK = '<link rel="icon" type="image/svg+xml" href="/favicon.svg">'
+
 INDEX_PAGE = """<!DOCTYPE html><html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cyber Training Academy</title>
+""" + FAVICON_LINK + """
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -608,6 +620,7 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ c.title }} · Cyber Training Academy</title>
+""" + FAVICON_LINK + """
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -802,6 +815,7 @@ DOCS_PAGE = """<!DOCTYPE html><html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Documents · Cyber Training Academy</title>
+""" + FAVICON_LINK + """
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -848,6 +862,7 @@ SPLASH_PAGE = """<!DOCTYPE html><html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hold On \u00b7 Cyber Training Academy</title>
+""" + FAVICON_LINK + """
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -984,6 +999,19 @@ def challenge(cid):
             error = f"Incorrect flag. Keep trying!"
     return render_template_string(CHALLENGE_PAGE,
         c=c, solved=already_solved, error=error, score=get_score())
+
+
+# ── Favicon ───────────────────────────────────────────────────────────
+@app.route("/favicon.svg")
+def favicon_svg():
+    return Response(FAVICON_SVG, mimetype="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.route("/favicon.ico")
+def favicon_ico():
+    # Browsers request /favicon.ico for pages without an explicit <link>.
+    return redirect(url_for("favicon_svg"))
 
 
 # ── File downloads ────────────────────────────────────────────────────────────

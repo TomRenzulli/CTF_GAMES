@@ -28,7 +28,10 @@ BERACTF/
 ├── .dockerignore
 ├── CLAUDE.md                 # This file
 ├── docs/                     # Help material shown on the /docs tab — drop files in here
-│   └── Beginner's Guide to Cyber & CTFs.pdf
+│   ├── Beginner's Guide to Cyber & CTFs.pdf
+│   ├── CTF_VM_Setup_Guide.pdf
+│   ├── Think_Like_a_Hacker_CTF.pdf
+│   └── What_is_a_CTF.pdf
 └── challenge_files/
     ├── generate.py           # Generates all static challenge files at Docker build time
     ├── signal.txt            # Challenge 2 — hex-encoded flag
@@ -200,6 +203,13 @@ certbot --nginx -d ctf.shouldiclickthislink.com
 ```bash
 cd /opt/beractf && git pull && docker compose up -d --build
 ```
+
+---
+
+## Favicon
+- `FAVICON_SVG` in `app.py` holds an inline SVG shield (neon `#00ff9d` outline, `#2de2ff` check) — no static dir, no binary asset.
+- Served at `/favicon.svg`; `/favicon.ico` 302-redirects to it so the smaller inline-HTML pages get an icon too.
+- `FAVICON_LINK` is interpolated into the `<head>` of `INDEX_PAGE`, `CHALLENGE_PAGE`, and `DOCS_PAGE`.
 
 ---
 
