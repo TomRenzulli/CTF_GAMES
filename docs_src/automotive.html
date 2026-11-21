@@ -1,0 +1,207 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Car &amp; Automotive Hacking</title>
+<link rel="stylesheet" href="style.css"></head><body>
+
+<div class="masthead">
+  <h1>Car &amp; Automotive Hacking</h1>
+  <div class="kicker">Cyber Club Quick Reference · v1.0</div>
+</div>
+
+<p class="lede">
+A modern car is a <b>network on wheels</b>: 50&ndash;150 electronic control units talking over
+buses that were designed for reliability, not security. The core bus &mdash; <b>CAN</b> &mdash; is
+broadcast, has no source address, and no authentication. If you have read the OT material, this
+will feel familiar: it is the same story as Modbus, with a steering rack attached. The good news
+for learning is that you can do almost all of it in software, on a virtual bus, for free.
+</p>
+
+<div class="rule-strip">
+  <b>CAN is the Modbus of the car.</b> Every node hears every frame, any node can send any
+  arbitration ID, and nothing proves who sent what. Security has to come from <b>segmentation and
+  gateways</b>, never from the bus itself.
+</div>
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>A CAN frame</h3><span class="tag">The whole format</span></div>
+    <ul class="tight">
+      <li><b class="navy">Arbitration ID</b> (11 or 29 bit) &mdash; identifies the <i>message</i>,
+        not the sender. Lower ID = higher priority.</li>
+      <li><b class="navy">DLC</b> &mdash; data length, 0&ndash;8 bytes (64 on CAN-FD).</li>
+      <li><b class="navy">Data</b> &mdash; the payload. Meaning is defined per-vehicle in a
+        proprietary <b>DBC</b> database you usually don't have.</li>
+      <li><b class="navy">CRC / ACK</b> &mdash; integrity against noise, <i>not</i> against an
+        attacker.</li>
+    </ul>
+    <p class="muted" style="margin-top:3pt">Typical <code>candump</code> line:<br>
+      <code>can0 18A [8] 00 1C 00 00 00 00 00 7D</code></p>
+  </div>
+  <div class="panel warn">
+    <div class="panel-head"><h3 class="amber">Why there's no authentication</h3><span class="tag">1986 design</span></div>
+    <ul class="tight">
+      <li>Designed for a <b>closed, trusted</b> set of nodes inside one vehicle.</li>
+      <li>Hard <b>real-time</b> budgets &mdash; crypto costs microseconds nobody allocated.</li>
+      <li>8-byte payloads leave no room for a MAC.</li>
+      <li>Any node can <b>spoof</b> any ID, and a flood of ID <code>0x000</code> wins arbitration
+        forever &mdash; a trivial bus DoS.</li>
+      <li>Mitigations are bolted on: <b>gateway ECUs</b> segmenting buses, message counters,
+        AUTOSAR SecOC, and intrusion detection on the bus.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Buses and protocols</h2>
+<table>
+  <tr><th>Bus / protocol</th><th>Where it's used</th><th>Security</th><th>Notes</th></tr>
+  <tr><td><b>CAN / CAN-FD</b></td><td>Powertrain, chassis, body &mdash; the backbone</td>
+      <td class="red"><b>None</b></td>
+      <td>Broadcast, no source identity. CAN-FD raises payload to 64 bytes and speeds up, but
+          adds no authentication</td></tr>
+  <tr><td><b>LIN</b></td><td>Cheap peripherals: mirrors, seats, wipers</td><td class="red">None</td>
+      <td>Single-wire, low speed, master/slave. Often reachable from a door module</td></tr>
+  <tr><td><b>FlexRay</b></td><td>High-end chassis, x-by-wire</td><td class="red">None</td>
+      <td>Deterministic and time-triggered; harder to inject into because of the schedule</td></tr>
+  <tr><td><b>Automotive Ethernet + SOME/IP</b></td><td>ADAS, cameras, infotainment backbone</td>
+      <td class="amber">Varies</td>
+      <td>Where the industry is heading. Normal IP tooling applies &mdash; and normal IP flaws</td></tr>
+  <tr><td><b>OBD-II</b></td><td>Mandatory diagnostic port, driver's footwell</td>
+      <td class="red">Physical access = bus access</td>
+      <td>Standard PIDs (Mode <code>01</code>) expose RPM, speed, coolant. Legally required to exist</td></tr>
+  <tr><td><b>UDS (ISO 14229)</b></td><td>Diagnostics &amp; reprogramming</td>
+      <td class="amber">Seed/key, often weak</td>
+      <td>The powerful one &mdash; see services below. Weak seed/key algorithms are a classic finding</td></tr>
+  <tr><td><b>ISO-TP (ISO 15765-2)</b></td><td>Transport over CAN</td><td class="red">None</td>
+      <td>Segments messages longer than 8 bytes; UDS rides on it</td></tr>
+  <tr><td><b>J1939</b></td><td>Trucks, buses, heavy equipment</td><td class="red">None</td>
+      <td>CAN-based but standardised payloads &mdash; one DBC fits many vehicles, unlike cars</td></tr>
+</table>
+
+<div class="row">
+  <div style="flex:1.05">
+    <h2 style="margin-top:0">UDS services worth recognising</h2>
+    <table>
+      <tr><th>SID</th><th>Service</th><th>Why it matters</th></tr>
+      <tr><td><code>0x10</code></td><td>Diagnostic Session Control</td><td>Unlocks extended or
+        programming sessions where the dangerous services live</td></tr>
+      <tr><td><code>0x27</code></td><td>Security Access</td><td>Seed/key challenge. Often a weak,
+        reversible algorithm &mdash; the lock on everything else</td></tr>
+      <tr><td><code>0x22</code> / <code>0x2E</code></td><td>Read / Write Data By Identifier</td>
+        <td>Reads and <i>writes</i> ECU configuration</td></tr>
+      <tr><td><code>0x31</code></td><td>Routine Control</td><td>Triggers built-in routines &mdash;
+        actuator tests, calibrations</td></tr>
+      <tr><td><code>0x34</code>&ndash;<code>0x37</code></td><td>Request / Transfer / Exit Download</td>
+        <td>Firmware flashing. The full-compromise path if security access falls</td></tr>
+      <tr><td><code>0x11</code></td><td>ECU Reset</td><td>Reboots a controller &mdash; disruptive
+        on a live vehicle</td></tr>
+      <tr><td><code>0x28</code></td><td>Communication Control</td><td>Can silence normal bus
+        traffic, hiding an attack or disabling a function</td></tr>
+    </table>
+  </div>
+  <div class="panel" style="flex:0.95">
+    <div class="panel-head"><h3>Attack surface map</h3><span class="tag">Remote &rarr; local</span></div>
+    <ul class="tight">
+      <li><b>Telematics / TCU</b> &mdash; cellular-connected. The only truly <i>remote</i> entry
+        point, and the one that made the Jeep hack famous.</li>
+      <li><b>Infotainment</b> &mdash; Linux/Android, Bluetooth, Wi-Fi, USB, media parsers. Big
+        attack surface, often bridged to CAN through a gateway.</li>
+      <li><b>Keyless entry (RKE/PKE)</b> &mdash; rolling-code replay, and <b>relay attacks</b> that
+        extend the key's range from inside the house.</li>
+      <li><b>TPMS</b> &mdash; unauthenticated 315/433 MHz sensor broadcasts; trackable and
+        spoofable.</li>
+      <li><b>OBD-II dongles</b> &mdash; insurance and fleet devices put a cellular radio directly
+        on the bus.</li>
+      <li><b>EV charging</b> &mdash; OCPP backends and ISO 15118 plug-and-charge.</li>
+      <li><b>Direct wiring</b> &mdash; 2023 thefts injected CAN frames via headlight wiring to
+        spoof "key present" to the door module.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Tooling</h2>
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>Software</h3><span class="tag">Mostly free</span></div>
+    <ul class="tight">
+      <li><b>can-utils</b> (Linux) &mdash; the core kit:<br>
+        <code>candump can0</code> capture · <code>cansend can0 123#DEADBEEF</code> inject ·
+        <code>cansniffer</code> highlights <i>changing</i> bytes · <code>cangen</code> fuzz ·
+        <code>canplayer</code> replay</li>
+      <li><b>SocketCAN</b> &mdash; CAN as a Linux network interface. Create a virtual bus with
+        <code>modprobe vcan</code> and <code>ip link add dev vcan0 type vcan</code>.</li>
+      <li><b>SavvyCAN</b> &mdash; GUI capture, DBC decoding, diffing.</li>
+      <li><b>python-can</b> / <b>udsoncan</b> / <b>scapy</b> (automotive layers) &mdash; scripting.</li>
+      <li><b>Wireshark</b> &mdash; dissects SocketCAN and ISO-TP captures natively.</li>
+      <li><b>caringcaribou</b> &mdash; discovery of UDS services and seed/key probing.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>Hardware &amp; labs</h3><span class="tag">When you go physical</span></div>
+    <ul class="tight">
+      <li><b>CANable / CANtact / USB2CAN</b> (~$30&ndash;60) &mdash; USB-to-CAN, SocketCAN-native.</li>
+      <li><b>ValueCAN / Kvaser / PCAN</b> &mdash; professional interfaces.</li>
+      <li><b>ICSim</b> &mdash; the instrument-cluster simulator. A fake dashboard on a virtual bus;
+        <b>the standard way to learn</b> without a car.</li>
+      <li><b>Bench ECU</b> &mdash; a junkyard ECU, 12 V supply and a CAN interface is the safest
+        real hardware.</li>
+      <li><b>Logic analyser / oscilloscope</b> &mdash; for physical-layer and wiring work.</li>
+      <li><b>CARLA</b> &mdash; full driving simulation for ADAS-level research.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="row">
+  <div class="panel good">
+    <div class="panel-head"><h3 class="green">A first lab, start to finish</h3><span class="tag">No car required</span></div>
+    <ol class="tight">
+      <li>Create a virtual bus: <code>sudo modprobe vcan</code> then
+        <code>sudo ip link add dev vcan0 type vcan &amp;&amp; sudo ip link set up vcan0</code>.</li>
+      <li>Run <b>ICSim</b> against <code>vcan0</code> &mdash; you get a dashboard and a controller.</li>
+      <li><code>candump vcan0</code> and watch the noise.</li>
+      <li>Use <code>cansniffer vcan0</code>, press a control, and see which bytes change.</li>
+      <li>Isolate the arbitration ID for speed, then <code>cansend</code> a forged frame and watch
+        the needle move.</li>
+      <li>Replay a capture with <code>canplayer</code> to understand why replay alone is detectable.</li>
+    </ol>
+    <p class="muted" style="margin-top:3pt">That loop &mdash; capture, diff, isolate, forge &mdash;
+      is the whole discipline in miniature.</p>
+  </div>
+  <div class="panel warn">
+    <div class="panel-head"><h3 class="red">Safety &amp; legality</h3><span class="tag">Read before touching a car</span></div>
+    <ul class="tight">
+      <li><b>Only your own vehicle, or one you have written permission to test.</b> Unauthorised
+        access to a vehicle's systems is a computer crime.</li>
+      <li><b>Never inject on a moving vehicle</b>, and never with anyone inside. Bus faults can
+        disable steering assist, brakes or the engine.</li>
+      <li>Test on a <b>bench ECU or simulator</b> first &mdash; always.</li>
+      <li>Writing to ECUs can <b>brick them</b>, void warranty, or leave a car un-startable.
+        Flashing is irreversible without the original image.</li>
+      <li><b>Never transmit</b> on key-fob frequencies without understanding local RF law.</li>
+      <li>Disclose responsibly &mdash; the Auto-ISAC and most manufacturers run coordinated
+        disclosure programmes.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Incidents worth knowing</h2>
+<div class="cols2">
+  <ul class="tight">
+    <li><b>Jeep Cherokee</b> (Miller &amp; Valasek, 2015) &mdash; remote compromise via the Uconnect
+      cellular head unit, pivoting to CAN to control brakes and steering. Triggered a 1.4M-vehicle
+      recall and effectively created the industry.</li>
+    <li><b>CAN injection thefts</b> (2023) &mdash; thieves spliced into headlight wiring to inject
+      frames spoofing "valid key", unlocking and starting vehicles in under a minute.</li>
+    <li><b>Relay attacks</b> &mdash; two radios extend a passive key's range from inside a house to
+      the driveway. Still widespread; mitigated by UWB distance bounding.</li>
+    <li><b>Tesla at Pwn2Own</b> &mdash; repeated infotainment and gateway compromises, but notable
+      for fast OTA remediation &mdash; the counter-example that updates can work.</li>
+    <li><b>BMW ConnectedDrive</b> (2015) &mdash; unauthenticated telematics commands could unlock
+      doors; fixed over the air.</li>
+  </ul>
+</div>
+
+<div class="footer">
+  <div><b>Go deeper:</b> <i>The Car Hacker's Handbook</i> (Craig Smith, free online) ·
+    OpenGarages.org · ISO 14229 / 15765 · UN R155 &amp; ISO/SAE 21434 · Auto-ISAC</div>
+  <div class="right">Learn on <code>vcan0</code> and ICSim before you touch a car<br>Questions? Ping the cyber club channel.</div>
+</div>
+</body></html>

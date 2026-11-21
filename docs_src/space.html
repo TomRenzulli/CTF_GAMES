@@ -1,0 +1,170 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Space &amp; Satellite Hacking</title>
+<link rel="stylesheet" href="style.css"></head><body>
+
+<div class="masthead">
+  <h1>Space &amp; Satellite Hacking</h1>
+  <div class="kicker">Cyber Club Quick Reference · v1.0</div>
+</div>
+
+<p class="lede">
+Satellites feel exotic, but the security story is familiar: <b>protocols designed in an era with
+no threat model</b>, long-lived hardware that cannot be patched, and a ground network that is just
+IT infrastructure with a dish attached. The exotic part is the physics &mdash; orbits, link
+budgets and Doppler shift &mdash; and the fact that <b>receiving</b> is a normal, legal hobby while
+<b>transmitting</b> is tightly licensed. Start on the receive side and you can do real work with a
+$30 radio.
+</p>
+
+<div class="rule-strip">
+  The lesson from every real incident so far: <b>attackers go after the ground segment, not the
+  spacecraft.</b> Modems, terminals, operator workstations and the TT&amp;C network are ordinary
+  computers &mdash; and they're the cheap way in.
+</div>
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>The four segments</h3><span class="tag">Where the attack surface is</span></div>
+    <ul class="tight">
+      <li><b class="navy">Ground segment</b> &mdash; mission control, TT&amp;C stations, teleports,
+        scheduling. Normal servers and networks. <b>Highest real-world risk.</b></li>
+      <li><b class="navy">Space segment</b> &mdash; the spacecraft itself: bus, payload, flight
+        software. Hard to reach, impossible to patch casually.</li>
+      <li><b class="navy">Link segment</b> &mdash; the RF path up and down. Jamming, spoofing and
+        eavesdropping live here.</li>
+      <li><b class="navy">User segment</b> &mdash; terminals, VSATs, GNSS receivers. Enormous
+        installed base, rarely updated.</li>
+    </ul>
+    <p class="muted" style="margin-top:3pt"><b>TT&amp;C</b> = Telemetry, Tracking &amp; Command
+      &mdash; the control channel. Compromise it and you command the spacecraft.</p>
+  </div>
+  <div class="panel warn">
+    <div class="panel-head"><h3 class="amber">Why it's soft</h3><span class="tag">Design-era reality</span></div>
+    <ul class="tight">
+      <li><b>Many downlinks are unencrypted.</b> Weather, telemetry and broadcast payloads are
+        often plaintext by design &mdash; and legal to receive.</li>
+      <li><b>Authentication is frequently absent</b> on older command links; security assumed
+        nobody owned a transmitter.</li>
+      <li><b>No patching.</b> A 15-year design life and a radiation-hardened CPU means flight
+        software is near-frozen.</li>
+      <li><b>Long supply chains</b> &mdash; bus, payload, ground software and operators are all
+        different vendors.</li>
+      <li><b>COTS cubesats</b> ship with the same embedded weaknesses as any IoT board.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Protocols and standards to know</h2>
+<table>
+  <tr><th>Standard</th><th>Layer / use</th><th>Security</th><th>What to know</th></tr>
+  <tr><td><b>CCSDS Space Packet</b></td><td>Application &mdash; telemetry (TM) and telecommand (TC)</td>
+      <td class="amber">Optional</td>
+      <td>The lingua franca of spacecraft data. Primary header carries APID, sequence count and
+          length &mdash; parse it like any binary protocol</td></tr>
+  <tr><td><b>CCSDS TM/TC Space Data Link</b></td><td>Link framing</td><td class="amber">Optional</td>
+      <td>Transfer frames, virtual channels, Reed-Solomon FEC and randomization. You must
+          de-randomize and FEC-decode before the bytes mean anything</td></tr>
+  <tr><td><b>AX.25</b></td><td>Link &mdash; amateur / cubesat</td><td class="red">None</td>
+      <td>Borrowed from packet radio. Callsign-addressed, no authentication. Extremely common on
+          university cubesats</td></tr>
+  <tr><td><b>DVB-S / S2</b></td><td>Broadcast &amp; VSAT downlink</td><td class="amber">Varies</td>
+      <td>Used for TV and satellite internet backhaul. Unencrypted IP has historically been
+          recoverable from downlinks</td></tr>
+  <tr><td><b>GNSS (GPS/Galileo)</b></td><td>Navigation</td><td class="red">Civil signal unauthenticated</td>
+      <td>Civil GPS has no signal authentication &mdash; the basis of spoofing. Galileo OSNMA now
+          adds it. <b>Never transmit on these bands.</b></td></tr>
+  <tr><td><b>SPP / PUS (ECSS-E-70-41)</b></td><td>ESA packet utilisation standard</td>
+      <td class="amber">Mission-defined</td><td>Service/subservice structure for commands and
+          housekeeping &mdash; ESA's convention layered on CCSDS</td></tr>
+  <tr><td><b>SatCom modems / VSAT</b></td><td>User terminal</td><td class="red">Often weak</td>
+      <td>Web admin panels, default creds and firmware flaws &mdash; this is ordinary embedded
+          hacking, and where real compromises happen</td></tr>
+</table>
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-head"><h3>Orbital basics you actually need</h3><span class="tag">Just enough physics</span></div>
+    <ul class="tight">
+      <li><b>LEO</b> (~200&ndash;2000 km) &mdash; fast, passes last 5&ndash;15 minutes, strong
+        Doppler. Cubesats and imaging.</li>
+      <li><b>MEO</b> (~20,000 km) &mdash; GNSS constellations.</li>
+      <li><b>GEO</b> (35,786 km) &mdash; appears fixed in the sky; point once and forget.
+        TV and traditional satcom.</li>
+      <li><b>TLE</b> (Two-Line Element) &mdash; the orbit description everyone uses. Feed it to
+        tracking software to predict passes. Published openly by CelesTrak / Space-Track.</li>
+      <li><b>Doppler shift</b> &mdash; a LEO pass smears frequency by several kHz; your receiver
+        must track it or the decode fails.</li>
+      <li><b>Link budget</b> &mdash; why antenna, LNA and pointing matter more than software.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>Tooling</h3><span class="tag">Receive side</span></div>
+    <ul class="tight">
+      <li><b>RTL-SDR</b> (~$30, receive-only) &mdash; the right first purchase.
+        <b>HackRF / LimeSDR / USRP</b> transmit too, which is where licensing applies.</li>
+      <li><b>GNU Radio</b> &mdash; visual DSP flowgraphs; the standard SDR toolkit.</li>
+      <li><b>gr-satellites</b> &mdash; decoders for a hundred-plus real cubesats. The fastest path
+        to a genuine decode.</li>
+      <li><b>SatDump</b> &mdash; turnkey weather-satellite imagery (NOAA, Meteor, GOES).</li>
+      <li><b>Gpredict</b> / <b>Skyfield</b> (Python) &mdash; pass prediction from TLEs.</li>
+      <li><b>SDR++ / GQRX</b> &mdash; general receivers for finding and recording signals.</li>
+      <li><b>SatNOGS</b> &mdash; a global network of ground stations with open observation data.
+        You can analyse real passes without owning hardware.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="row">
+  <div class="panel good">
+    <div class="panel-head"><h3 class="green">Practise legally</h3><span class="tag">Start here</span></div>
+    <ol class="tight">
+      <li><b>Decode NOAA / Meteor weather imagery.</b> Public, unencrypted, designed for open
+        reception. A dipole and an RTL-SDR is enough.</li>
+      <li><b>Receive the ISS</b> &mdash; APRS digipeater and SSTV events on amateur bands.</li>
+      <li><b>Work SatNOGS archives</b> &mdash; replay recorded IQ from real passes.</li>
+      <li><b>Parse CCSDS by hand</b> &mdash; take a frame, strip the headers, extract the APID.
+        Pure binary protocol work, no radio needed.</li>
+      <li><b>Hack-A-Sat</b> &mdash; the US Space Force CTF; past challenges and solutions are
+        public and are the best structured practice available.</li>
+      <li><b>Get a licence</b> if you want to transmit. Amateur radio is the legal route.</li>
+    </ol>
+  </div>
+  <div class="panel warn">
+    <div class="panel-head"><h3 class="red">Hard legal line</h3><span class="tag">Non-negotiable</span></div>
+    <ul class="tight">
+      <li><b>Receiving</b> public satellite downlinks is legal in most jurisdictions &mdash; it is
+        a mainstream hobby.</li>
+      <li><b>Transmitting</b> without a licence is an offence. Uplinking to a satellite you do not
+        own is a serious federal crime almost everywhere.</li>
+      <li><b>Never jam or spoof GNSS.</b> Aviation, shipping and emergency services depend on it;
+        even a benchtop test can leak and endanger life.</li>
+      <li>Even where reception is legal, <b>redistributing</b> decoded private content may not be.</li>
+      <li>Keep transmit-capable SDRs on a <b>dummy load</b> or shielded enclosure when testing.</li>
+      <li>Treat intercepted content as sensitive; publish findings, not other people's data.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Incidents worth knowing</h2>
+<div class="cols2">
+  <ul class="tight">
+    <li><b>ViaSat / AcidRain</b> (2022) &mdash; wiper malware pushed through the <i>ground</i>
+      management network bricked tens of thousands of modems across Europe at the start of the
+      Ukraine invasion. The canonical "ground segment is the target" case.</li>
+    <li><b>Hack-A-Sat</b> (2020&ndash;) &mdash; US Space Force CTF; the 2023 final ran against a
+      real satellite in orbit (Moonlighter). Public challenge archives are excellent study material.</li>
+    <li><b>GPS jamming &amp; spoofing</b> &mdash; routine in conflict zones; has misdirected
+      shipping and disrupted aviation. Civil GNSS has no signal authentication.</li>
+    <li><b>Iridium pager traffic</b> &mdash; researchers demonstrated unencrypted messaging
+      recoverable with commodity SDR hardware.</li>
+    <li><b>VSAT terminal exposure</b> &mdash; internet-facing satellite modems with default
+      credentials have been found across maritime and aviation fleets.</li>
+  </ul>
+</div>
+
+<div class="footer">
+  <div><b>Go deeper:</b> CCSDS Blue Books (public) · SPARTA framework (space threat TTPs) ·
+    gr-satellites docs · SatNOGS wiki · CelesTrak TLEs</div>
+  <div class="right">Receive freely · transmit only when licensed<br>Questions? Ping the cyber club channel.</div>
+</div>
+</body></html>
