@@ -568,6 +568,19 @@ def record_session():
         SESSION_COUNT["total"] += 1
 
 
+def header_ctx(active, show_stats=True):
+    """Context every page's shared header needs."""
+    solved = get_solved()
+    return {
+        "active": active,
+        "show_stats": show_stats,
+        "score": get_score(),
+        "total": TOTAL_POINTS,
+        "solved_count": len(solved),
+        "total_challenges": TOTAL_CHALLENGES,
+    }
+
+
 def stats_rows():
     """Per-challenge aggregates, hardest-first by failed attempts per solve."""
     rows = []
@@ -592,6 +605,11 @@ def stats_rows():
 
 FLAG_MAP = {c["flag"]: c["id"] for c in CHALLENGES}
 TOTAL_POINTS = sum(c["points"] for c in CHALLENGES)
+TOTAL_CHALLENGES = len(CHALLENGES)
+
+# First-appearance order of categories, derived so a challenge in a brand-new
+# category can never silently render nowhere (it used to be a hardcoded list).
+CATEGORY_ORDER = list(dict.fromkeys(c["category"] for c in CHALLENGES))
 
 # ── SQLite for flag 19 ────────────────────────────────────────────────────────
 def init_db():
@@ -682,6 +700,23 @@ def grade_submission(submitted, challenge):
 
 # ── Main page template ────────────────────────────────────────────────────────
 BASE_STYLE = """
+/* Self-hosted so the site renders identically on a locked-down network or an
+   offline lab VM, and so no student request leaves for a third party.
+   JetBrains Mono, SIL Open Font License — see static/fonts/OFL.txt */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/static/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/static/fonts/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 :root {
   --bg: #05060a;
   --surface: #0d0f18;
@@ -738,18 +773,96 @@ code {
   color: var(--neon2);
   font-size: 0.9em;
 }
+/* Shared site header — one definition for all pages (see SITE_HEADER) */
+.site-header {
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: rgba(0,255,157,0.03);
+  flex-wrap: wrap;
+}
+.site-header .stats-chip { margin-left: auto; font-size: 0.8rem; color: var(--dim); }
+.site-header .stats-chip b { color: var(--neon); }
+.site-header nav { display: flex; gap: 1.2rem; align-items: center; }
+.site-header nav a { font-size: 0.8rem; color: var(--dim); }
+.site-header nav a:hover { color: var(--neon); }
+.site-header nav a[aria-current="page"] {
+  color: var(--neon);
+  border-bottom: 1px solid var(--neon);
+  padding-bottom: 2px;
+}
+.site-header nav a:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; }
+.brand-mark { font-size: 1.3rem; font-weight: 700; color: var(--neon); letter-spacing: 0.05em; }
+.brand-sub { color: var(--dim); font-size: 0.75rem; letter-spacing: 0.2em; }
+/* Screen-reader-only text (form labels that shouldn't display) */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+/* Copy-to-clipboard button on code blocks */
+.copy-wrap { position: relative; }
+.copy-btn {
+  position: absolute; top: 0.4rem; right: 0.4rem;
+  background: rgba(0,255,157,0.08);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+}
+.copy-btn:hover { color: var(--neon); border-color: var(--neon); }
+.copy-btn:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
+.copy-btn.copied { color: var(--neon); border-color: var(--neon); }
+.copy-btn.copy-inline {
+  position: static;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+  font-size: 0.6rem;
+  padding: 0.1rem 0.35rem;
+}
+@media (max-width: 600px) {
+  .site-header { padding: 0.8rem 1rem; gap: 0.8rem; }
+  .site-header .stats-chip { margin-left: 0; order: 3; width: 100%; }
+  .brand-sub { display: none; }
+  .wrap { padding: 1.2rem 1rem !important; }
+  .grid { padding: 1.2rem 1rem !important; }
+  .hero { padding: 2rem 1rem 1.5rem !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
 """
 
-HEADER_HTML = """
-<header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
-  <a href="/" class="brand" title="Home" aria-label="Home"><span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span><span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span></a>
-  <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
-    Score: <b style="color:var(--neon)">{{ score }}</b> /
-    <span style="color:var(--dim)">{{ total }}</span> pts &nbsp;|&nbsp;
-    Solved: <b style="color:var(--neon)">{{ solved_count }}</b> / 20
+# One header for every page. Rendered with {% include %}-style string
+# substitution into each template, so a nav change is a one-line change.
+# `active` is the page key ("challenges" | "docs" | "instructor"); `show_stats`
+# controls the score chip. Challenge totals come from TOTAL_CHALLENGES, never
+# a hardcoded 20.
+SITE_HEADER = """
+<header class="site-header">
+  <a href="/" class="brand" title="Home" aria-label="Home"><span class="brand-mark">🛡 CYBER</span><span class="brand-sub">TRAINING ACADEMY</span></a>
+  {% if show_stats %}
+  <span class="stats-chip">
+    Score: <b>{{ score }}</b>{% if total %} / {{ total }}{% endif %} pts
+    &nbsp;|&nbsp; Solved: <b>{{ solved_count }}</b> / {{ total_challenges }}
   </span>
-  <a href="/" style="font-size:0.8rem;color:var(--dim);">Challenges</a>
-  <a href="/docs" style="font-size:0.8rem;color:var(--dim);">Documents</a>
+  {% endif %}
+  <nav>
+    <a href="/"{% if active == 'challenges' %} aria-current="page"{% endif %}>Challenges</a>
+    <a href="/docs"{% if active == 'docs' %} aria-current="page"{% endif %}>Documents</a>
+    {% if active == 'instructor' %}<a href="/instructor" aria-current="page">Instructor</a>{% endif %}
+  </nav>
 </header>
 """
 
@@ -769,8 +882,6 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cyber Training Academy</title>
 """ + FAVICON_LINK + """
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 """ + BASE_STYLE + """
 .hero {
@@ -858,20 +969,12 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
 </head>
 <body>
 <!-- FLAG{source_code_tells_all} -->
-<header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
-  <a href="/" class="brand" title="Home" aria-label="Home"><span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span><span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span></a>
-  <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
-    Score: <b style="color:var(--neon)">{{ score }}</b> / {{ total }} pts &nbsp;|&nbsp;
-    Solved: <b style="color:var(--neon)">{{ solved_count }}</b> / 20
-  </span>
-  <a href="/" style="font-size:0.8rem;color:var(--dim);">Challenges</a>
-  <a href="/docs" style="font-size:0.8rem;color:var(--dim);">Documents</a>
-</header>
+""" + SITE_HEADER + """
 <div class="hero">
   <h1>Training Academy</h1>
   <p>20 PROGRESSIVE CHALLENGES · BUILD SKILLS FROM ZERO · CYBER CTF CLUB</p>
   <div class="progress-bar-wrap"><div class="progress-bar" style="width:{{ pct }}%"></div></div>
-  <div class="stats">{{ score }} / {{ total }} points &nbsp;·&nbsp; {{ solved_count }} / 20 solved &nbsp;·&nbsp; {{ pct }}% complete</div>
+  <div class="stats">{{ score }} / {{ total }} points &nbsp;·&nbsp; {{ solved_count }} / {{ total_challenges }} solved &nbsp;·&nbsp; {{ pct }}% complete</div>
 </div>
 
 {% if flash %}
@@ -886,7 +989,7 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
 {% endif %}
 
 <div class="grid">
-{% set categories = ['Encoding','Recon','File Analysis','Crypto','Web','Forensics','Auth','Injection','Chain'] %}
+{# categories come from CATEGORY_ORDER, derived from CHALLENGES — a new category can't vanish #}
 {% for cat in categories %}
   {% set cat_challenges = challenges|selectattr('category','equalto',cat)|list %}
   {% if cat_challenges %}
@@ -913,8 +1016,6 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ c.title }} · Cyber Training Academy</title>
 """ + FAVICON_LINK + """
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 """ + BASE_STYLE + """
 .wrap { max-width: 760px; margin: 0 auto; padding: 2rem; }
@@ -1118,16 +1219,9 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
 </style>
 </head>
 <body>
-<header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
-  <a href="/" class="brand" title="Home" aria-label="Home"><span style="font-size:1.2rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span><span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span></a>
-  <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
-    Score: <b style="color:var(--neon)">{{ score }}</b> pts
-  </span>
-  <a href="/" style="font-size:0.8rem;color:var(--dim);">← All Challenges</a>
-  <a href="/docs" style="font-size:0.8rem;color:var(--dim);">Documents</a>
-</header>
+""" + SITE_HEADER + """
 <div class="wrap">
-  <div class="cnum">CHALLENGE {{ '%02d'|format(c.id) }} of 20</div>
+  <div class="cnum">CHALLENGE {{ '%02d'|format(c.id) }} of {{ total_challenges }}</div>
   <div class="ctitle">{{ c.title }} <span class="pts-badge">{{ c.points }} pts</span></div>
   <div class="skill-tag">🎓 Skill: {{ c.skill }}</div>
 
@@ -1137,10 +1231,10 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
     {% if c.takeaway %}
     <div class="takeaway"><b>What this means:</b> {{ c.takeaway }}</div>
     {% endif %}
-    {% if c.id < 20 %}
+    {% if c.id < total_challenges %}
     <a class="next-cta" href="/challenge/{{ c.id + 1 }}">Next: Challenge {{ '%02d'|format(c.id + 1) }} →</a>
     {% else %}
-    <a class="next-cta" href="/">🏁 All 20 complete — back to the ladder</a>
+    <a class="next-cta" href="/">🏁 All {{ total_challenges }} complete — back to the ladder</a>
     {% endif %}
   </div>
   {% endif %}
@@ -1151,7 +1245,10 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
   <div class="story">{{ c.story|safe }}</div>
 
   <form class="flag-form" method="POST">
-    <input class="flag-input" name="flag" placeholder="FLAG{...}" autocomplete="off" {% if solved %}disabled{% endif %}>
+    <label class="visually-hidden" for="flag-input">Flag for challenge {{ c.id }}, in the form FLAG&#123;...&#125;</label>
+    <input class="flag-input" id="flag-input" name="flag" placeholder="FLAG{...}"
+           autocomplete="off" autocapitalize="off" spellcheck="false"
+           {% if solved %}disabled{% endif %}>
     <button class="submit-btn" type="submit" {% if solved %}disabled{% endif %}>Submit Flag</button>
   </form>
 
@@ -1202,12 +1299,59 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
     <a href="/challenge/{{ c.id - 1 }}" class="nav-btn">← Challenge {{ c.id - 1 }}</a>
     {% endif %}
     <a href="/" class="nav-btn" style="margin-left:auto;">All Challenges</a>
-    {% if c.id < 20 %}
+    {% if c.id < total_challenges %}
     <a href="/challenge/{{ c.id + 1 }}" class="nav-btn">Challenge {{ c.id + 1 }} →</a>
     {% endif %}
   </div>
 </div>
 <script>
+// Add a copy button to every code block and inline <code> long enough to be
+// worth copying. Progressive enhancement: without JS the page is unchanged.
+(function addCopyButtons() {
+  const targets = Array.from(document.querySelectorAll('.block-code'));
+  document.querySelectorAll('.story code, .hint-body code, .note-text code').forEach(el => {
+    if (el.textContent.trim().length >= 12) targets.push(el);
+  });
+  targets.forEach(el => {
+    if (el.dataset.copyReady) return;
+    el.dataset.copyReady = '1';
+    const isBlock = el.classList.contains('block-code');
+    const copyText = el.textContent.trim();
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.textContent = 'copy';
+    btn.setAttribute('aria-label', 'Copy to clipboard');
+    btn.addEventListener('click', async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      try {
+        await navigator.clipboard.writeText(copyText);
+      } catch (err) {
+        const ta = document.createElement('textarea');
+        ta.value = copyText;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      btn.textContent = 'copied';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+    });
+    if (isBlock) {
+      const wrap = document.createElement('div');
+      wrap.className = 'copy-wrap';
+      el.parentNode.insertBefore(wrap, el);
+      wrap.appendChild(el);
+      wrap.appendChild(btn);
+    } else {
+      btn.classList.add('copy-inline');
+      el.insertAdjacentElement('afterend', btn);
+    }
+  });
+})();
+
 function toggleNotes(btn) {
   const body = document.getElementById('notes-body');
   const isOpen = body.classList.contains('open');
@@ -1224,8 +1368,6 @@ DOCS_PAGE = """<!DOCTYPE html><html lang="en">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Documents · Cyber Training Academy</title>
 """ + FAVICON_LINK + """
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 """ + BASE_STYLE + """
 .wrap { max-width: 760px; margin: 0 auto; padding: 2rem; }
@@ -1242,14 +1384,7 @@ DOCS_PAGE = """<!DOCTYPE html><html lang="en">
 </style>
 </head>
 <body>
-<header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
-  <a href="/" class="brand" title="Home" aria-label="Home"><span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span><span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span></a>
-  <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
-    Score: <b style="color:var(--neon)">{{ score }}</b> pts
-  </span>
-  <a href="/" style="font-size:0.8rem;color:var(--dim);">Challenges</a>
-  <a href="/docs" style="font-size:0.8rem;color:var(--dim);">Documents</a>
-</header>
+""" + SITE_HEADER + """
 <div class="wrap">
   <div class="page-title">Documents</div>
   <div class="page-sub">One-pagers and reference material for the club.</div>
@@ -1271,8 +1406,6 @@ SPLASH_PAGE = """<!DOCTYPE html><html lang="en">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hold On \u00b7 Cyber Training Academy</title>
 """ + FAVICON_LINK + """
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 """ + BASE_STYLE + """
 .gate { max-width: 720px; margin: 0 auto; padding: 3rem 2rem 4rem; }
@@ -1369,8 +1502,6 @@ INSTRUCTOR_PAGE = """<!DOCTYPE html><html lang="en">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Instructor View · Cyber Training Academy</title>
 """ + FAVICON_LINK + """
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 """ + BASE_STYLE + """
 .wrap { max-width: 960px; margin: 0 auto; padding: 2rem; }
@@ -1405,12 +1536,7 @@ tr:hover td { background:rgba(0,255,157,0.03); }
 </style>
 </head>
 <body>
-<header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);flex-wrap:wrap;">
-  <a href="/" class="brand" title="Home" aria-label="Home"><span style="font-size:1.2rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">\U0001f6e1 CYBER</span><span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span></a>
-  <a href="/" style="margin-left:auto;font-size:0.8rem;color:var(--dim);">Challenges</a>
-  <a href="/docs" style="font-size:0.8rem;color:var(--dim);">Documents</a>
-  <a href="/instructor" aria-current="page" style="font-size:0.8rem;color:var(--neon);">Instructor</a>
-</header>
+""" + SITE_HEADER + """
 <div class="wrap">
   <div class="page-title">Instructor View</div>
   <div class="page-sub">
@@ -1478,7 +1604,7 @@ def welcome():
             record_session()
         session["warned"] = True
         return redirect(url_for("index"))
-    return render_template_string(SPLASH_PAGE)
+    return render_template_string(SPLASH_PAGE, **header_ctx("challenges", show_stats=False))
 
 
 @app.route("/")
@@ -1491,9 +1617,9 @@ def index():
     flash = request.args.get("flash", "")
     error = request.args.get("error", "")
     return render_template_string(INDEX_PAGE,
-        challenges=CHALLENGES, solved=solved, score=score,
-        total=TOTAL_POINTS, solved_count=len(solved), pct=pct,
-        flash=flash, error=error)
+        challenges=CHALLENGES, solved=solved, pct=pct,
+        categories=CATEGORY_ORDER,
+        flash=flash, error=error, **header_ctx("challenges"))
 
 
 @app.route("/challenge/<int:cid>", methods=["GET", "POST"])
@@ -1517,7 +1643,7 @@ def challenge(cid):
         else:
             error = message
     return render_template_string(CHALLENGE_PAGE,
-        c=c, solved=already_solved, error=error, score=get_score())
+        c=c, solved=already_solved, error=error, **header_ctx("challenges"))
 
 
 @app.route("/instructor")
@@ -1540,6 +1666,7 @@ def instructor():
         total_solves=total_solves,
         overall_rate=round(total_solves / total_attempts * 100) if total_attempts else 0,
         max_friction=max((r["friction"] for r in rows), default=0) or 0,
+        **header_ctx("instructor"),
     )
 
 
@@ -1574,7 +1701,7 @@ def docs():
         entries.append({"filename": name,
                         "title": stem.replace("_", " ").replace("-", " "),
                         "ext": ext.lstrip(".").upper()})
-    return render_template_string(DOCS_PAGE, docs=entries, score=get_score())
+    return render_template_string(DOCS_PAGE, docs=entries, **header_ctx("docs"))
 
 
 @app.route("/docs/<path:filename>")
@@ -1604,7 +1731,7 @@ def cookie_challenge():
     else:
         body = "<h2>Welcome, guest.</h2><p>You don't have access to the admin area.</p><p>Hint: Try changing your <code>role</code> cookie to <code>admin</code>.</p>"
     resp = Response(f"""<!DOCTYPE html><html><head>
-    <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+    <link href='/static/fonts.css' rel='stylesheet'>
     <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}}
     code{{background:rgba(0,255,157,0.1);padding:0.2rem 0.4rem;border-radius:3px;color:#2de2ff;}}
     h2{{color:#00ff9d;}}</style></head><body>{body}
@@ -1624,7 +1751,7 @@ def param_challenge():
     else:
         msg = f"<h2>Hello, {user}!</h2><p>You're logged in as <b>{user}</b>. Only admins can see the flag.</p>"
     return f"""<!DOCTYPE html><html><head>
-    <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+    <link href='/static/fonts.css' rel='stylesheet'>
     <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}}
     code{{background:rgba(0,255,157,0.1);padding:0.2rem 0.4rem;border-radius:3px;color:#2de2ff;}}
     h2{{color:#00ff9d;}}</style></head><body>{msg}
@@ -1643,7 +1770,7 @@ def robots():
 @app.route("/secret-training-vault")
 def secret_vault():
     return """<!DOCTYPE html><html><head>
-    <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+    <link href='/static/fonts.css' rel='stylesheet'>
     <style>body{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}
     code{background:rgba(0,255,157,0.1);padding:0.2rem 0.4rem;border-radius:3px;color:#2de2ff;}
     h2{color:#00ff9d;}</style></head><body>
@@ -1658,7 +1785,7 @@ def secret_vault():
 @app.route("/backup")
 def backup():
     return """<!DOCTYPE html><html><head>
-    <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+    <link href='/static/fonts.css' rel='stylesheet'>
     <style>body{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}
     code{background:rgba(0,255,157,0.1);padding:0.2rem 0.4rem;border-radius:3px;color:#2de2ff;}
     h2{color:#00ff9d;}</style></head><body>
@@ -1681,7 +1808,7 @@ def default_login():
         else:
             msg = '<p style="color:#ff3860">❌ Invalid credentials. Try common defaults.</p>'
     return f"""<!DOCTYPE html><html><head>
-    <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+    <link href='/static/fonts.css' rel='stylesheet'>
     <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;max-width:400px;margin:3rem auto;}}
     input{{background:#0d0f18;border:1px solid rgba(0,255,157,0.2);border-radius:4px;padding:0.6rem;color:#c8d0d8;font-family:inherit;width:100%;margin-bottom:0.8rem;}}
     button{{background:rgba(0,255,157,0.1);border:1px solid #00ff9d;border-radius:4px;padding:0.6rem 1.5rem;color:#00ff9d;font-family:inherit;cursor:pointer;}}
@@ -1707,7 +1834,7 @@ def token_challenge():
             decoded = base64.b64decode(token).decode()
             if decoded == "admin":
                 return f"""<!DOCTYPE html><html><head>
-                <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+                <link href='/static/fonts.css' rel='stylesheet'>
                 <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}}
                 code{{background:rgba(0,255,157,0.1);padding:0.2rem 0.4rem;border-radius:3px;color:#2de2ff;}}
                 h2{{color:#00ff9d;}}</style></head><body>
@@ -1719,7 +1846,7 @@ def token_challenge():
             pass
     guest_token = base64.b64encode(b"guest").decode()
     return f"""<!DOCTYPE html><html><head>
-    <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+    <link href='/static/fonts.css' rel='stylesheet'>
     <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}}
     code{{background:rgba(0,255,157,0.1);padding:0.2rem 0.4rem;border-radius:3px;color:#2de2ff;}}
     h2{{color:#00ff9d;}}</style></head><body>
@@ -1747,7 +1874,7 @@ def ping_tool():
         except Exception as e:
             output = str(e)
     return f"""<!DOCTYPE html><html><head>
-    <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+    <link href='/static/fonts.css' rel='stylesheet'>
     <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;max-width:600px;margin:2rem auto;}}
     input{{background:#0d0f18;border:1px solid rgba(0,255,157,0.2);border-radius:4px;padding:0.6rem;color:#c8d0d8;font-family:inherit;width:70%;}}
     button{{background:rgba(0,255,157,0.1);border:1px solid #00ff9d;border-radius:4px;padding:0.6rem 1.2rem;color:#00ff9d;font-family:inherit;cursor:pointer;margin-left:0.5rem;}}
@@ -1784,7 +1911,7 @@ def sqli_login():
         except Exception as e:
             msg = f'<p style="color:#ff3860">SQL Error: {e}</p>'
     return f"""<!DOCTYPE html><html><head>
-    <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+    <link href='/static/fonts.css' rel='stylesheet'>
     <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;max-width:400px;margin:3rem auto;}}
     input{{background:#0d0f18;border:1px solid rgba(0,255,157,0.2);border-radius:4px;padding:0.6rem;color:#c8d0d8;font-family:inherit;width:100%;margin-bottom:0.8rem;}}
     button{{background:rgba(0,255,157,0.1);border:1px solid #00ff9d;border-radius:4px;padding:0.6rem 1.5rem;color:#00ff9d;font-family:inherit;cursor:pointer;}}
@@ -1814,7 +1941,7 @@ def final_decode():
     # Base64 of "/final/vault?key=banshee"
     encoded = base64.b64encode(b"/final/vault?key=banshee").decode()
     return f"""<!DOCTYPE html><html><head>
-    <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+    <link href='/static/fonts.css' rel='stylesheet'>
     <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}}
     code{{background:rgba(0,255,157,0.1);padding:0.2rem 0.4rem;border-radius:3px;color:#2de2ff;}}
     h2{{color:#00ff9d;}}</style></head><body>
@@ -1829,7 +1956,7 @@ def final_vault():
     key = request.args.get("key", "")
     if key == "banshee":
         return f"""<!DOCTYPE html><html><head>
-        <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+        <link href='/static/fonts.css' rel='stylesheet'>
         <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}}
         code{{background:rgba(0,255,157,0.1);padding:0.2rem 0.4rem;border-radius:3px;color:#2de2ff;}}
         h2{{color:#00ff9d;}}</style></head><body>
@@ -1839,7 +1966,7 @@ def final_vault():
         <p style='margin-top:1rem'><a href='/' style='color:#5a6270;font-size:0.85rem;'>← Home</a></p>
         </body></html>"""
     return """<!DOCTYPE html><html><head>
-    <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
+    <link href='/static/fonts.css' rel='stylesheet'>
     <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}}
     h2{{color:#ff3860;}}</style></head><body>
     <h2>🔒 Access Denied</h2><p>Wrong key. Keep working the chain.</p>

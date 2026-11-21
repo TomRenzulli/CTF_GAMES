@@ -27,6 +27,7 @@ BERACTF/
 ├── docker-compose.yml
 ├── .dockerignore
 ├── CLAUDE.md                 # This file
+├── static/                   # Self-hosted JetBrains Mono (woff2) + fonts.css + OFL.txt
 ├── docs/                     # Help material shown on the /docs tab — drop files in here
 │   ├── Beginner's Guide to Cyber & CTFs.pdf
 │   ├── CTF_VM_Setup_Guide.pdf
@@ -44,30 +45,32 @@ BERACTF/
 
 ---
 
-## The 20 Challenges (Skill Ladder)
+## The Challenge Ladder
+Generated from the `CHALLENGES` list in `app.py` — regenerate rather than hand-editing.
+Counts are derived at runtime (`TOTAL_CHALLENGES`, `CATEGORY_ORDER`), so this table is documentation, not configuration.
 
-| # | Title | Category | Mechanic |
-|---|-------|----------|----------|
-| 1 | The Encoded Message | Encoding | Base64 decode |
-| 2 | Signal Intercept | Encoding | Hex decode of signal.txt |
-| 3 | Binary Transmission | Encoding | Binary → ASCII of binary_message.txt |
-| 4 | Hidden in Plain Sight | Recon | HTML comment in page source |
-| 5 | The Invisible Header | Recon | X-Flag HTTP response header |
-| 6 | Strings Attached | File Analysis | strings on mystery.bin |
-| 7 | What's in a Name? | File Analysis | file command on ZIP named .txt |
-| 8 | Caesar's Secret | Crypto | ROT13 decode |
-| 9 | Shift Happens | Crypto | Caesar brute-force |
-| 10 | Cookie Monster | Web | Set admin=true cookie |
-| 11 | Open Sesame | Web | ?access=granted URL param |
-| 12 | The Forbidden Path | Recon | robots.txt |
-| 13 | The Backup | Recon | Directory guess → /backup |
-| 14 | Picture This | Forensics | PNG tEXt metadata chunk |
-| 15 | Magic Bytes | File Analysis | JPEG magic bytes in .pdf |
-| 16 | Default Danger | Web | admin/admin default creds |
-| 17 | Token Trouble | Web | base64('admin') token |
-| 18 | Shell Shock | Injection | Command injection → /flag18.txt |
-| 19 | SQL Injection | Injection | SQLi bypass on login form |
-| 20 | The Final Boss | Chained | robots → base64 → ?key=banshee |
+| # | Title | Category | Skill taught | Pts |
+|---|-------|----------|--------------|-----|
+| 1 | Base64 Basics | Encoding | Decoding Base64 | 50 |
+| 2 | Hex Signals | Encoding | Decoding hexadecimal | 50 |
+| 3 | Binary Message | Encoding | Reading binary / ASCII | 50 |
+| 4 | View Source | Recon | Reading HTML page source | 75 |
+| 5 | HTTP Headers | Recon | Inspecting HTTP response headers | 75 |
+| 6 | Strings Search | File Analysis | Using the `strings` command | 100 |
+| 7 | Wrong Extension | File Analysis | Using the `file` command / magic bytes | 100 |
+| 8 | ROT13 | Crypto | ROT13 / Caesar cipher | 100 |
+| 9 | Caesar Brute Force | Crypto | Brute-forcing Caesar cipher (26 shifts) | 125 |
+| 10 | Cookie Monster | Web | Reading and editing browser cookies | 125 |
+| 11 | URL Parameters | Web | Manipulating URL query parameters | 125 |
+| 12 | robots.txt | Recon | Checking robots.txt for hidden paths | 150 |
+| 13 | Directory Guessing | Recon | Discovering hidden endpoints by guessing | 150 |
+| 14 | Image Metadata | Forensics | Extracting EXIF / metadata from images | 150 |
+| 15 | Magic Bytes | Forensics | Identifying files by magic bytes / file header | 150 |
+| 16 | Default Credentials | Auth | Testing default / common credentials | 175 |
+| 17 | Weak Token | Auth | Predicting / forging weak session tokens | 175 |
+| 18 | Command Injection | Injection | Basic OS command injection via shell metacharacters | 200 |
+| 19 | SQL Injection | Injection | Classic SQL injection (OR 1=1) | 200 |
+| 20 | Final Boss: Chain It | Chain | Multi-step: recon → decode → submit | 250 |
 
 ---
 
@@ -183,6 +186,34 @@ Notes auto-expand. Solving used to display only a point total.
 `DOC_LINKS[id]` lists PDF filenames from `docs/`. `_prepare_challenges()` resolves
 them against `DOCS_DIR` at import and drops any that don't exist, so renaming a PDF
 removes the link instead of producing a dead one.
+
+### Shared header (`SITE_HEADER`)
+One header definition for all pages. `header_ctx(active, show_stats=True)` supplies
+`active` (`"challenges"` | `"docs"` | `"instructor"`), the score chip values and
+`total_challenges`; the active nav link gets `aria-current="page"`. The four
+duplicated inline `<header>` blocks are gone — a nav change is now one edit.
+`HEADER_HTML` (dead code) was replaced by this.
+
+### Derived counts — do not hardcode
+`TOTAL_CHALLENGES` and `CATEGORY_ORDER` (first-appearance order of categories) are
+derived from `CHALLENGES`. The index previously hardcoded a nine-name category list,
+so a challenge in a new category rendered **nowhere**; templates now take
+`categories=CATEGORY_ORDER` and `total_challenges`. There are no literal `20`s left
+in the templates.
+
+### Self-hosted font
+JetBrains Mono (400/700) is served from `static/fonts/` via `@font-face` in
+`BASE_STYLE`, with `static/fonts.css` for the inline challenge sub-pages. **No page
+requests fonts.googleapis.com any more** — the site renders identically on a
+locked-down network or an offline lab VM, and no student request leaves for a third
+party. Licence: SIL OFL, `static/fonts/OFL.txt` (redistribution is permitted; keep
+that file).
+
+### Copy buttons
+`addCopyButtons()` on the challenge page adds a copy control to every `.block-code`
+and to any inline `<code>` of 12+ characters. Progressive enhancement — with JS off
+the page is unchanged. Clipboard API with a `textarea` + `execCommand` fallback for
+non-HTTPS contexts.
 
 ### Collapsible Training Notes
 Each challenge page has a `▶ Training Notes` section (`.notes-section` CSS class) that toggles open/closed via `toggleNotes()` JS. The 4 notes per challenge cover: concept, recognition pattern, real-world context, and tools.
