@@ -6,7 +6,7 @@ Each flag teaches exactly one concept before the next builds on it.
 from flask import (Flask, request, render_template_string,
                    redirect, url_for, session, send_from_directory,
                    Response)
-import secrets, base64, sqlite3, os, subprocess, hashlib
+import secrets, base64, sqlite3, os, subprocess, hashlib, threading
 
 app = Flask(__name__)
 
@@ -541,6 +541,53 @@ def _prepare_challenges():
 
 
 _prepare_challenges()
+
+
+# ── Anonymous aggregate stats (instructor view) ───────────────────────────────
+# Process-local counters only: no identities, nothing written to disk, and the
+# whole thing resets when the container restarts — i.e. per club meeting.
+# Purpose is to show which challenge is burning the room, nothing about any
+# individual student.
+_STATS_LOCK = threading.Lock()
+CHALLENGE_STATS = {c["id"]: {"attempts": 0, "solves": 0} for c in CHALLENGES}
+SESSION_COUNT = {"total": 0}
+
+
+def record_attempt(cid, correct):
+    with _STATS_LOCK:
+        row = CHALLENGE_STATS.get(cid)
+        if row is None:
+            return
+        row["attempts"] += 1
+        if correct:
+            row["solves"] += 1
+
+
+def record_session():
+    with _STATS_LOCK:
+        SESSION_COUNT["total"] += 1
+
+
+def stats_rows():
+    """Per-challenge aggregates, hardest-first by failed attempts per solve."""
+    rows = []
+    with _STATS_LOCK:
+        for c in CHALLENGES:
+            st = CHALLENGE_STATS[c["id"]]
+            attempts, solves = st["attempts"], st["solves"]
+            failures = attempts - solves
+            # Failed attempts per solve: how much the room struggled to get there.
+            friction = (failures / solves) if solves else (float(failures) if failures else 0.0)
+            rows.append({
+                "id": c["id"], "title": c["title"], "category": c["category"],
+                "attempts": attempts, "solves": solves, "failures": failures,
+                "friction": round(friction, 1),
+                "rate": round(solves / attempts * 100) if attempts else 0,
+            })
+    rows.sort(key=lambda r: (-r["friction"], -r["failures"], r["id"]))
+    return rows
+
+
 
 
 FLAG_MAP = {c["flag"]: c["id"] for c in CHALLENGES}
@@ -1317,12 +1364,118 @@ SPLASH_PAGE = """<!DOCTYPE html><html lang="en">
 </body></html>
 """
 
+INSTRUCTOR_PAGE = """<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Instructor View · Cyber Training Academy</title>
+""" + FAVICON_LINK + """
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+""" + BASE_STYLE + """
+.wrap { max-width: 960px; margin: 0 auto; padding: 2rem; }
+.page-title { font-size:1.5rem; font-weight:700; color:var(--neon); margin-bottom:0.3rem; }
+.page-sub { color:var(--dim); font-size:0.85rem; margin-bottom:1.5rem; line-height:1.7; }
+.tiles { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.8rem; }
+.tile {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1rem 1.3rem; min-width:150px;
+}
+.tile-num { font-size:1.6rem; font-weight:700; color:var(--neon); }
+.tile-lbl { font-size:0.7rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--dim); }
+table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+th {
+  text-align:left; padding:0.6rem 0.7rem; color:var(--dim);
+  font-size:0.68rem; letter-spacing:0.15em; text-transform:uppercase;
+  border-bottom:1px solid var(--border); font-weight:400;
+}
+td { padding:0.6rem 0.7rem; border-bottom:1px solid rgba(0,255,157,0.06); }
+tr:hover td { background:rgba(0,255,157,0.03); }
+.c-id { color:var(--dim); }
+.c-title { color:var(--text); }
+.bar-wrap { background:rgba(255,56,96,0.12); border-radius:3px; height:6px; min-width:60px; }
+.bar { height:6px; border-radius:3px; background:var(--red); }
+.num { text-align:right; font-variant-numeric:tabular-nums; }
+.hot { color:var(--red); font-weight:700; }
+.empty { color:var(--dim); font-size:0.85rem; padding:2rem 0; }
+.privacy {
+  margin-top:2rem; padding:1rem 1.2rem; font-size:0.78rem; line-height:1.7;
+  color:var(--dim); border:1px dashed var(--border); border-radius:6px;
+}
+</style>
+</head>
+<body>
+<header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);flex-wrap:wrap;">
+  <a href="/" class="brand" title="Home" aria-label="Home"><span style="font-size:1.2rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">\U0001f6e1 CYBER</span><span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span></a>
+  <a href="/" style="margin-left:auto;font-size:0.8rem;color:var(--dim);">Challenges</a>
+  <a href="/docs" style="font-size:0.8rem;color:var(--dim);">Documents</a>
+  <a href="/instructor" aria-current="page" style="font-size:0.8rem;color:var(--neon);">Instructor</a>
+</header>
+<div class="wrap">
+  <div class="page-title">Instructor View</div>
+  <div class="page-sub">
+    Which challenge is burning the room. Sorted by failed attempts per solve, hardest first.
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="tile-num">{{ sessions }}</div><div class="tile-lbl">Sessions started</div></div>
+    <div class="tile"><div class="tile-num">{{ total_attempts }}</div><div class="tile-lbl">Flag attempts</div></div>
+    <div class="tile"><div class="tile-num">{{ total_solves }}</div><div class="tile-lbl">Solves</div></div>
+    <div class="tile"><div class="tile-num">{{ overall_rate }}%</div><div class="tile-lbl">Success rate</div></div>
+  </div>
+
+  {% if total_attempts %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Challenge</th><th>Category</th>
+        <th class="num">Attempts</th><th class="num">Solves</th>
+        <th class="num">Failed</th><th class="num">Fails / solve</th><th>Friction</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="c-id">{{ '%02d'|format(r.id) }}</td>
+        <td class="c-title">{{ r.title }}</td>
+        <td style="color:var(--neon2)">{{ r.category }}</td>
+        <td class="num">{{ r.attempts }}</td>
+        <td class="num">{{ r.solves }}</td>
+        <td class="num">{{ r.failures }}</td>
+        <td class="num {% if r.friction >= 2 %}hot{% endif %}">{{ r.friction }}</td>
+        <td>
+          {% if max_friction %}
+          <div class="bar-wrap"><div class="bar" style="width:{{ (r.friction / max_friction * 100)|round|int }}%"></div></div>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No attempts recorded yet. Numbers appear as students submit flags.</p>
+  {% endif %}
+
+  <div class="privacy">
+    <b>What this does and doesn't collect.</b> Counters are aggregate and anonymous
+    &mdash; attempts and solves per challenge, plus how many sessions started. No
+    identities, no submitted values, nothing written to disk. Everything lives in
+    process memory and resets when the container restarts, so these numbers cover
+    the current meeting only.
+  </div>
+</div>
+</body></html>
+"""
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.route("/welcome", methods=["GET", "POST"])
 def welcome():
     """Phishing-awareness splash. POST (a button, not a link) acknowledges it."""
     if request.method == "POST":
+        if not session.get("warned"):
+            record_session()
         session["warned"] = True
         return redirect(url_for("index"))
     return render_template_string(SPLASH_PAGE)
@@ -1354,6 +1507,10 @@ def challenge(cid):
     if request.method == "POST":
         submitted = request.form.get("flag", "")
         is_correct, message = grade_submission(submitted, c)
+        # Count the attempt only if this is a genuine try, not a re-submit of an
+        # already-solved challenge, and skip empty submissions.
+        if not already_solved and normalize_flag(submitted):
+            record_attempt(cid, is_correct)
         if is_correct:
             mark_solved(c["flag"])
             already_solved = True
@@ -1361,6 +1518,29 @@ def challenge(cid):
             error = message
     return render_template_string(CHALLENGE_PAGE,
         c=c, solved=already_solved, error=error, score=get_score())
+
+
+@app.route("/instructor")
+def instructor():
+    """Anonymous aggregate view: which challenge is burning the room.
+
+    Deliberately NOT token-gated — the whole site sits behind one shared
+    nginx basic-auth password, and the data here is anonymous aggregate with
+    nothing per-student in it, so students seeing "19 is hard for everyone"
+    is harmless (arguably reassuring).
+    """
+    rows = stats_rows()
+    total_attempts = sum(r["attempts"] for r in rows)
+    total_solves = sum(r["solves"] for r in rows)
+    return render_template_string(
+        INSTRUCTOR_PAGE,
+        rows=rows,
+        sessions=SESSION_COUNT["total"],
+        total_attempts=total_attempts,
+        total_solves=total_solves,
+        overall_rate=round(total_solves / total_attempts * 100) if total_attempts else 0,
+        max_friction=max((r["friction"] for r in rows), default=0) or 0,
+    )
 
 
 # ── Favicon ───────────────────────────────────────────────────────────

@@ -123,6 +123,22 @@ rendered with `{{ error|safe }}` on the challenge page — they are app-authored
 constants and never interpolate user input. The **index** banner is fed from a
 query parameter and must stay escaped.
 
+### Instructor view (`/instructor`)
+Anonymous aggregate counters only — attempts and solves per challenge plus a count
+of sessions started — held in process memory under `_STATS_LOCK`, never written to
+disk, reset on container restart (so the numbers cover one club meeting). Rows sort
+by **failed attempts per solve**, which surfaces the challenge that's burning the
+room. No identities and no submitted values are stored.
+
+Deliberately **not** token-gated: the whole site already sits behind one shared
+nginx basic-auth password and the data is anonymous aggregate. It is intentionally
+**not linked from the student nav** — reachable by URL, to keep the student UI
+focused. A re-submit of an already-solved challenge and an empty submission are
+both excluded from the counts.
+
+A scoreboard was considered and **deliberately rejected** — scoring stays
+session-only so there is no student PII anywhere in the app.
+
 ### Startup
 - `init_db()` creates `/tmp/users.db` with an `admin` and a `guest` user for challenge 19 (credentials are in `init_db()`)
 - `/flag18.txt` is written at Docker build time (not at runtime)
