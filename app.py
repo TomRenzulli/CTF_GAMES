@@ -405,6 +405,144 @@ CHALLENGES = [
     },
 ]
 
+# Documents served by the /docs tab (also used for per-challenge further reading).
+DOCS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")
+
+# ── Progressive hints ─────────────────────────────────────────────────────────
+# Three tiers per challenge, each revealed only on click. The old always-visible
+# "Hint:" line gave away the exact command before a student had tried anything;
+# retrieval effort is where the learning happens, so the command is now the LAST
+# resort rather than the first thing on the page.
+#
+# Tiers 1-2 are authored here. Tier 3 is lifted automatically from the inline
+# "<b>Hint:</b>" that used to sit in the story, so no existing guidance is lost.
+HINT_TIERS = {
+    1: [("Nudge", "The string ends in <code>=</code>. That padding character is the signature of one specific encoding — which one?"),
+        ("Method", "It's Base64. Every language and CyberChef can decode it, and on the command line the tool is named after it.")],
+    2: [("Nudge", "Those pairs only ever use the digits 0-9 and the letters a-f. What numbering system has exactly 16 digits?"),
+        ("Method", "Hexadecimal. Each pair of characters is one byte, and each byte is one ASCII character.")],
+    3: [("Nudge", "Eight digits per group, nothing but 1s and 0s. Each group is a single character."),
+        ("Method", "Each 8-bit group is an ASCII code point. Convert binary to decimal, then decimal to a character.")],
+    4: [("Nudge", "The page shows you what it wants you to see. The file the browser built it from can hold more."),
+        ("Method", "View the page source. Browsers parse comments but never display them, which makes them a classic hiding place.")],
+    5: [("Nudge", "A response is more than its body. Every page arrives with a set of metadata you never see."),
+        ("Method", "Read the HTTP response headers rather than the page content — DevTools' Network tab, or a request that prints headers only.")],
+    6: [("Nudge", "Binary files still contain readable text. You just can't see it by opening them in a text editor."),
+        ("Method", "There is a standard tool that extracts printable character sequences from any file. Pipe its output to a search.")],
+    7: [("Nudge", "A file's extension is just part of its name. Nothing forces it to be honest."),
+        ("Method", "Identify the file by its contents instead of its name, then open it with whatever program actually matches.")],
+    8: [("Nudge", "Word lengths and the <code>FLAG{}</code> shape are intact — only the letters themselves changed. So each letter maps to exactly one other letter."),
+        ("Method", "A fixed-shift substitution cipher. ROT13 rotates every letter 13 places through the alphabet.")],
+    9: [("Nudge", "Same cipher as the last challenge, but the shift isn't 13. How many shifts are even possible?"),
+        ("Method", "Only 25 useful shifts exist, so try all of them and read which output is English. That is brute force.")],
+    10: [("Nudge", "The server asked your browser to remember something about who you are. You can read what it remembered."),
+         ("Method", "DevTools &rarr; Application &rarr; Cookies. If the server trusts a cookie's value, editing that value changes what the server believes about you.")],
+    11: [("Nudge", "Everything after the <code>?</code> in the address bar was sent by you, not decided by the server."),
+         ("Method", "Edit the query string directly in the address bar and reload the page.")],
+    12: [("Nudge", "Websites publish a file that tells search engine crawlers which paths to stay away from. That list is public."),
+         ("Method", "Request <code>/robots.txt</code>. Anything marked Disallow is a path someone wanted kept out of search results.")],
+    13: [("Nudge", "Not every page on a site is linked from somewhere. Common directory names are common for a reason."),
+         ("Method", "Guess predictable paths by hand — the kind of name a developer would pick for old files they meant to delete.")],
+    14: [("Nudge", "An image carries more than its pixels. Cameras and editing tools write information into the file itself."),
+         ("Method", "Read the image's embedded metadata rather than viewing the picture.")],
+    15: [("Nudge", "Every file format begins with a fixed signature. The extension claimed PDF — check what the first bytes actually say."),
+         ("Method", "Dump the opening bytes in hex and compare them against known file signatures.")],
+    16: [("Nudge", "Shipped hardware and software arrive with a password already set. Most people never change it."),
+         ("Method", "Try the well-known default username and password pairs against the admin account.")],
+    17: [("Nudge", "Your token isn't random — look closely at it. Does it decode into something meaningful?"),
+         ("Method", "It's encoded, not encrypted. Decode it, change who it claims you are, then re-encode it the same way.")],
+    18: [("Nudge", "This tool runs a real system command with your input placed inside it. What if your input ended that command early and started another?"),
+         ("Method", "Shell metacharacters chain a second command onto the first. The flag sits in a file at the root of the filesystem.")],
+    19: [("Nudge", "Your username is pasted straight into a database query. What if it contained query syntax instead of a name?"),
+         ("Method", "Break out of the string literal, then either make the condition always true or comment out the password check entirely.")],
+    20: [("Nudge", "Nothing in this one is new. It is three things you have already done, performed in sequence."),
+         ("Method", "Start with recon to find a hidden path, decode what you find there, then pass the result along as a URL parameter.")],
+}
+
+# One line shown the moment a challenge is solved — the peak-attention moment,
+# which previously displayed only a point total.
+TAKEAWAYS = {
+    1: "Base64 is encoding, not encryption. It hides nothing from anyone who recognizes it — treat it as plain text.",
+    2: "Hex is how analysts read raw bytes. You will see it in packet captures, file headers and memory dumps for the rest of your career.",
+    3: "Binary, hex and text are three views of the same bytes. Being able to move between them is a core analyst skill.",
+    4: "Anything delivered to the browser is public. Comments, hidden fields and commented-out code all ship to the attacker.",
+    5: "Headers carry authentication, caching and security policy. Reading them is the first step of almost every web assessment.",
+    6: "Before anything clever, run strings. It is the single highest-yield first move on an unknown file.",
+    7: "Never trust an extension. Malware delivery relies on people trusting the name instead of the contents.",
+    8: "ROT13 is obfuscation, not cryptography. Preserved word shapes are the tell that a substitution cipher is in play.",
+    9: "A tiny key space means no security. If the possibilities can be enumerated, they will be.",
+    10: "Never trust client-side values. Anything the browser holds, the user can edit — the server must re-verify.",
+    11: "User-supplied parameters are attacker-controlled input. Authorization has to be checked server-side, every request.",
+    12: "robots.txt is a recon goldmine. It is a list of paths someone specifically wanted hidden.",
+    13: "Unlinked does not mean inaccessible. Attackers enumerate paths with wordlists; obscurity is not access control.",
+    14: "Metadata leaks more than people expect — GPS coordinates, usernames, software versions, internal paths.",
+    15: "File signatures beat file names. This is how forensic tools identify evidence regardless of what it is called.",
+    16: "Default credentials remain one of the most common real-world breaches. Changing them is the cheapest security win there is.",
+    17: "Encoding is not authentication. Session tokens must be random and server-validated, never a decodable username.",
+    18: "Unsanitized input reaching a shell is remote code execution. Never build shell commands from user input.",
+    19: "Parameterized queries stop this cold. String-concatenated SQL is still breaching real companies today.",
+    20: "Real intrusions are chains. Each step is individually small; the impact comes from linking them together.",
+}
+
+# Further reading per challenge, pointing at the PDFs already in docs/.
+# Filenames are resolved against DOCS_DIR at import, so a renamed or removed PDF
+# silently drops out of the UI instead of rendering a dead link.
+DOC_LINKS = {
+    1: ["What_is_a_CTF.pdf", "Beginner's Guide to Cyber & CTFs.pdf"],
+    2: ["Beginner's Guide to Cyber & CTFs.pdf"],
+    3: ["Beginner's Guide to Cyber & CTFs.pdf"],
+    4: ["Beginner's Guide to Cyber & CTFs.pdf"],
+    5: ["Beginner's Guide to Cyber & CTFs.pdf"],
+    6: ["CTF_VM_Setup_Guide.pdf", "Beginner's Guide to Cyber & CTFs.pdf"],
+    7: ["CTF_VM_Setup_Guide.pdf"],
+    8: ["Beginner's Guide to Cyber & CTFs.pdf"],
+    9: ["Beginner's Guide to Cyber & CTFs.pdf"],
+    10: ["Think_Like_a_Hacker_CTF.pdf"],
+    11: ["Think_Like_a_Hacker_CTF.pdf"],
+    12: ["Think_Like_a_Hacker_CTF.pdf"],
+    13: ["Think_Like_a_Hacker_CTF.pdf", "CTF_VM_Setup_Guide.pdf"],
+    14: ["CTF_VM_Setup_Guide.pdf"],
+    15: ["CTF_VM_Setup_Guide.pdf"],
+    16: ["Think_Like_a_Hacker_CTF.pdf"],
+    17: ["Think_Like_a_Hacker_CTF.pdf"],
+    18: ["Think_Like_a_Hacker_CTF.pdf"],
+    19: ["Think_Like_a_Hacker_CTF.pdf"],
+    20: ["Think_Like_a_Hacker_CTF.pdf", "What_is_a_CTF.pdf"],
+}
+
+_HINT_MARKER = "<b>Hint:</b>"
+
+
+def _split_inline_hint(story):
+    """Split a story into (body, trailing inline hint) on the legacy marker."""
+    if _HINT_MARKER not in story:
+        return story, ""
+    body, _, hint = story.partition(_HINT_MARKER)
+    body = body.rstrip()
+    while body.endswith("<br>"):
+        body = body[: -len("<br>")].rstrip()
+    return body, hint.strip()
+
+
+def _prepare_challenges():
+    """Attach hints, takeaway and further-reading links to each challenge."""
+    for c in CHALLENGES:
+        body, inline_hint = _split_inline_hint(c["story"])
+        c["story"] = body
+
+        tiers = list(HINT_TIERS.get(c["id"], []))
+        if inline_hint:
+            tiers.append(("Exact command", inline_hint))
+        c["hints"] = tiers
+
+        c["takeaway"] = TAKEAWAYS.get(c["id"], "")
+        c["docs"] = [name for name in DOC_LINKS.get(c["id"], [])
+                     if os.path.isfile(os.path.join(DOCS_DIR, name))]
+
+
+_prepare_challenges()
+
+
 FLAG_MAP = {c["flag"]: c["id"] for c in CHALLENGES}
 TOTAL_POINTS = sum(c["points"] for c in CHALLENGES)
 
@@ -849,6 +987,87 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
   line-height: 1.75;
   color: var(--text);
 }
+/* Progressive hints */
+.hints-section { margin-top: 1.5rem; }
+.hints-head {
+  font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--amber); margin-bottom: 0.6rem;
+}
+.hints-sub { font-size: 0.78rem; color: var(--dim); margin-bottom: 0.8rem; }
+.hint {
+  border: 1px solid rgba(255,179,71,0.25);
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  background: rgba(255,179,71,0.03);
+}
+.hint > summary {
+  cursor: pointer;
+  padding: 0.7rem 1rem;
+  font-size: 0.85rem;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+}
+.hint > summary::-webkit-details-marker { display: none; }
+.hint > summary::after {
+  content: 'reveal';
+  margin-left: auto;
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.hint[open] > summary::after { content: 'hide'; }
+.hint > summary:hover { background: rgba(255,179,71,0.07); }
+.hint > summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.hint-tier {
+  font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase;
+  border: 1px solid rgba(255,179,71,0.3); border-radius: 3px;
+  padding: 0.1rem 0.4rem; color: var(--amber);
+}
+.hint-body {
+  padding: 0 1rem 1rem;
+  font-size: 0.88rem;
+  line-height: 1.75;
+  color: var(--text);
+}
+/* Post-solve takeaway + next step */
+.takeaway {
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px dashed rgba(0,255,157,0.25);
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+.takeaway b { color: var(--neon); }
+.next-cta {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.6rem 1.4rem;
+  background: rgba(0,255,157,0.12);
+  border: 1px solid var(--neon);
+  border-radius: 4px;
+  color: var(--neon);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.next-cta:hover { background: rgba(0,255,157,0.22); text-decoration: none; }
+.next-cta:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; }
+/* Further reading */
+.reading { margin-top: 1.5rem; font-size: 0.82rem; color: var(--dim); }
+.reading-head {
+  font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--neon2); margin-bottom: 0.5rem;
+}
+.reading a { color: var(--neon2); }
+.reading li { margin-bottom: 0.25rem; list-style: none; }
+.reading li::before { content: '📄 '; }
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
 </style>
 </head>
 <body>
@@ -866,7 +1085,17 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
   <div class="skill-tag">🎓 Skill: {{ c.skill }}</div>
 
   {% if solved %}
-  <div class="solved-banner">✅ CHALLENGE SOLVED! +{{ c.points }} points</div>
+  <div class="solved-banner">
+    ✅ <b>CHALLENGE SOLVED!</b> +{{ c.points }} points
+    {% if c.takeaway %}
+    <div class="takeaway"><b>What this means:</b> {{ c.takeaway }}</div>
+    {% endif %}
+    {% if c.id < 20 %}
+    <a class="next-cta" href="/challenge/{{ c.id + 1 }}">Next: Challenge {{ '%02d'|format(c.id + 1) }} →</a>
+    {% else %}
+    <a class="next-cta" href="/">🏁 All 20 complete — back to the ladder</a>
+    {% endif %}
+  </div>
   {% endif %}
   {% if error %}
   <div class="error-banner">❌ {{ error|safe }}</div>
@@ -879,13 +1108,38 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
     <button class="submit-btn" type="submit" {% if solved %}disabled{% endif %}>Submit Flag</button>
   </form>
 
+  {% if c.hints and not solved %}
+  <div class="hints-section">
+    <div class="hints-head">💡 Stuck? Hints</div>
+    <div class="hints-sub">Open them one at a time — try the nudge before the answer. You learn it by finding it.</div>
+    {% for label, text in c.hints %}
+    <details class="hint">
+      <summary><span class="hint-tier">{{ loop.index }}</span> {{ label }}</summary>
+      <div class="hint-body">{{ text|safe }}</div>
+    </details>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if c.docs %}
+  <div class="reading">
+    <div class="reading-head">Further reading</div>
+    <ul>
+      {% for d in c.docs %}
+      <li><a href="/docs/{{ d|urlencode }}" target="_blank" rel="noopener">{{ d.rsplit('.', 1)[0].replace('_', ' ') }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
   {% if c.notes %}
   <div class="notes-section">
-    <button class="notes-toggle" onclick="toggleNotes(this)" aria-expanded="false">
+    <button class="notes-toggle {% if solved %}open{% endif %}" onclick="toggleNotes(this)"
+            aria-expanded="{{ 'true' if solved else 'false' }}" aria-controls="notes-body">
       📖 &nbsp;Training Notes — Key Concepts for This Challenge
       <i class="chevron">▼</i>
     </button>
-    <div class="notes-body" id="notes-body">
+    <div class="notes-body {% if solved %}open{% endif %}" id="notes-body">
       {% for label, text in c.notes %}
       <div class="note-item">
         <div class="note-label">{{ label }}</div>
@@ -1129,8 +1383,6 @@ def files(filename):
 
 
 # ── Documents ─────────────────────────────────────────────────────────────────
-DOCS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")
-
 @app.route("/docs")
 def docs():
     names = sorted(os.listdir(DOCS_DIR)) if os.path.isdir(DOCS_DIR) else []

@@ -150,6 +150,24 @@ Each challenge in the `CHALLENGES` list is a dict:
 }
 ```
 
+### Progressive hints
+Each challenge carries `c["hints"]`: three click-to-reveal tiers rendered as native
+`<details>` elements (nudge → method → exact command). Tiers 1-2 are authored in
+`HINT_TIERS`; tier 3 is lifted automatically from the legacy `<b>Hint:</b>` line
+that used to sit visible in the story, by `_split_inline_hint()`. **Do not put the
+solution back in the story** — the always-visible command was the problem this
+replaced. Hints are hidden once the challenge is solved.
+
+### Post-solve takeaway
+`TAKEAWAYS[id]` is one line shown in the solved banner, plus a prominent
+`.next-cta` to the next challenge (or back to the ladder on #20), and the Training
+Notes auto-expand. Solving used to display only a point total.
+
+### Per-challenge further reading
+`DOC_LINKS[id]` lists PDF filenames from `docs/`. `_prepare_challenges()` resolves
+them against `DOCS_DIR` at import and drops any that don't exist, so renaming a PDF
+removes the link instead of producing a dead one.
+
 ### Collapsible Training Notes
 Each challenge page has a `▶ Training Notes` section (`.notes-section` CSS class) that toggles open/closed via `toggleNotes()` JS. The 4 notes per challenge cover: concept, recognition pattern, real-world context, and tools.
 
