@@ -27,6 +27,8 @@ BERACTF/
 ├── docker-compose.yml
 ├── .dockerignore
 ├── CLAUDE.md                 # This file
+├── docs/                     # Help material shown on the /docs tab — drop files in here
+│   └── Beginner's Guide to Cyber & CTFs.pdf
 └── challenge_files/
     ├── generate.py           # Generates all static challenge files at Docker build time
     ├── signal.txt            # Challenge 2 — hex-encoded flag
@@ -72,6 +74,30 @@ Flags live in the `"flag"` field of each entry in the `CHALLENGES` list in `app.
 ---
 
 ## Key App Behavior
+
+### Phishing-awareness splash (`/welcome`)
+`GET /` redirects to `/welcome` until `session["warned"]` is set. The splash is a
+funny-but-serious warning about not trusting URLs — the site's own domain
+(`shouldiclickthislink.com`) is the teaching example — plus a verify-before-you-click
+checklist and a note that the range is deliberately vulnerable.
+
+- Entry is a **form POST button**, not a link, on purpose: the page should not end by
+  rewarding a click. `POST /welcome` sets the session flag and redirects to `/`.
+- **Only `/` is gated.** Challenge endpoints (`/header-challenge`, `/robots.txt`,
+  `/backup`, `/ping-tool`, …) must stay reachable without the splash, or challenge 5
+  (`curl -I /header-challenge`) and the other direct-URL challenges break.
+- Session-scoped, so it shows once per browser session (same lifetime as the score).
+
+### Documents tab (`/docs`)
+`/docs` lists every file in the repo's `docs/` directory (`DOCS_DIR`); `/docs/<filename>`
+serves it via `send_from_directory`. Titles are derived from the filename (underscores and
+hyphens become spaces). **To add help material, commit a file into `docs/` and redeploy** —
+no code change needed. The nav link appears in all four page headers.
+
+### Header
+The brand text in the top-left is an `<a href="/">` (`.brand` class) — the home button.
+Each template carries its own copy of the header markup, so a header change means editing
+all four (`HEADER_HTML` is currently unused/dead code).
 
 ### Startup
 - `init_db()` creates `/tmp/users.db` with an `admin` and a `guest` user for challenge 19 (credentials are in `init_db()`)

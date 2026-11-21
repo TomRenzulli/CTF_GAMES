@@ -138,9 +138,9 @@ CHALLENGES = [
         "category": "Crypto",
         "skill": "ROT13 / Caesar cipher",
         "story": "A classic. This message was 'encrypted' with ROT13:<br><br>"
-                 "<code class='block-code'>SYNT{ebg13_vf_whfg_n_cneebc}</code><br><br>"
+                 "<code class='block-code'>SYNT{ebg13_vf_whfg_n_cneebg}</code><br><br>"
                  "Rotate each letter 13 positions back to read the flag.<br><br>"
-                 "<b>Hint:</b> <code>echo 'SYNT{ebg13_vf_whfg_n_cneebc}' | tr 'A-Za-z' 'N-ZA-Mn-za-m'</code>",
+                 "<b>Hint:</b> <code>echo 'SYNT{ebg13_vf_whfg_n_cneebg}' | tr 'A-Za-z' 'N-ZA-Mn-za-m'</code>",
         "flag": "FLAG{rot13_is_just_a_parrot}",
         "points": 100,
         "notes": [
@@ -440,6 +440,17 @@ a:hover { text-decoration: underline; }
   color: var(--neon2);
   margin: 0.5rem 0;
 }
+.brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  text-decoration: none;
+  border-radius: 4px;
+  padding: 0.15rem 0.3rem;
+  margin: -0.15rem -0.3rem;
+}
+.brand:hover { background: rgba(0,255,157,0.08); text-decoration: none; }
+.brand:focus-visible { outline: 2px solid var(--neon); outline-offset: 2px; }
 code {
   background: rgba(0,255,157,0.07);
   padding: 0.1rem 0.35rem;
@@ -451,14 +462,14 @@ code {
 
 HEADER_HTML = """
 <header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
-  <span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span>
-  <span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span>
+  <a href="/" class="brand" title="Home" aria-label="Home"><span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span><span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span></a>
   <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
     Score: <b style="color:var(--neon)">{{ score }}</b> /
     <span style="color:var(--dim)">{{ total }}</span> pts &nbsp;|&nbsp;
     Solved: <b style="color:var(--neon)">{{ solved_count }}</b> / 20
   </span>
-  <a href="/" style="font-size:0.8rem;color:var(--dim);">Home</a>
+  <a href="/" style="font-size:0.8rem;color:var(--dim);">Challenges</a>
+  <a href="/docs" style="font-size:0.8rem;color:var(--dim);">Documents</a>
 </header>
 """
 
@@ -544,8 +555,7 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
 <body>
 <!-- FLAG{source_code_tells_all} -->
 <header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
-  <span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span>
-  <span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span>
+  <a href="/" class="brand" title="Home" aria-label="Home"><span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span><span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span></a>
   <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
     Score: <b style="color:var(--neon)">{{ score }}</b> / {{ total }} pts &nbsp;|&nbsp;
     Solved: <b style="color:var(--neon)">{{ solved_count }}</b> / 20
@@ -723,8 +733,7 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
 </head>
 <body>
 <header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
-  <span style="font-size:1.2rem;font-weight:700;color:var(--neon);">🛡 CYBER</span>
-  <span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span>
+  <a href="/" class="brand" title="Home" aria-label="Home"><span style="font-size:1.2rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span><span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span></a>
   <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
     Score: <b style="color:var(--neon)">{{ score }}</b> pts
   </span>
@@ -812,8 +821,7 @@ DOCS_PAGE = """<!DOCTYPE html><html lang="en">
 </head>
 <body>
 <header style="border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1.5rem;background:rgba(0,255,157,0.03);">
-  <span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span>
-  <span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span>
+  <a href="/" class="brand" title="Home" aria-label="Home"><span style="font-size:1.4rem;font-weight:700;color:var(--neon);letter-spacing:0.05em;">🛡 CYBER</span><span style="color:var(--dim);font-size:0.75rem;letter-spacing:0.2em;">TRAINING ACADEMY</span></a>
   <span style="margin-left:auto;font-size:0.8rem;color:var(--dim);">
     Score: <b style="color:var(--neon)">{{ score }}</b> pts
   </span>
@@ -836,10 +844,118 @@ DOCS_PAGE = """<!DOCTYPE html><html lang="en">
 </body></html>
 """
 
+SPLASH_PAGE = """<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hold On \u00b7 Cyber Training Academy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+""" + BASE_STYLE + """
+.gate { max-width: 720px; margin: 0 auto; padding: 3rem 2rem 4rem; }
+.tag {
+  display:inline-block; font-size:0.7rem; letter-spacing:0.25em; color:var(--amber);
+  border:1px solid rgba(255,179,71,0.4); border-radius:3px; padding:0.25rem 0.6rem; margin-bottom:1.5rem;
+}
+.gate h1 { font-size:1.9rem; line-height:1.25; color:var(--amber); margin-bottom:1.2rem; }
+.gate p { line-height:1.7; margin-bottom:1.1rem; font-size:0.95rem; }
+.gate strong { color:var(--text); }
+.urlbar {
+  background:#0a0c14; border:1px solid var(--border); border-radius:6px;
+  padding:0.9rem 1rem; margin:1.5rem 0; font-size:0.9rem; color:var(--dim);
+  overflow-wrap:anywhere;
+}
+.urlbar b { color:var(--red); }
+.checklist {
+  background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--neon);
+  border-radius:6px; padding:1.2rem 1.4rem; margin:1.8rem 0;
+}
+.checklist h2 { font-size:0.75rem; letter-spacing:0.2em; color:var(--neon); margin-bottom:0.9rem; }
+.checklist li { list-style:none; margin-bottom:0.7rem; font-size:0.88rem; line-height:1.55; padding-left:1.6rem; position:relative; }
+.checklist li:last-child { margin-bottom:0; }
+.checklist li:before { content:"\u2713"; position:absolute; left:0; color:var(--neon); }
+.warnbox {
+  background:rgba(255,56,96,0.06); border:1px solid rgba(255,56,96,0.3);
+  border-radius:6px; padding:1.1rem 1.3rem; margin:1.8rem 0; font-size:0.88rem; line-height:1.6;
+}
+.warnbox h2 { font-size:0.75rem; letter-spacing:0.2em; color:var(--red); margin-bottom:0.7rem; }
+.enter-btn {
+  font-family:inherit; font-size:0.95rem; font-weight:700; cursor:pointer;
+  background:transparent; border:1px solid var(--neon); color:var(--neon);
+  border-radius:4px; padding:0.8rem 1.4rem; margin-top:0.5rem;
+}
+.enter-btn:hover { background:rgba(0,255,157,0.1); }
+.kicker { color:var(--dim); font-size:0.78rem; line-height:1.6; margin-top:1.5rem; }
+</style>
+</head>
+<body>
+<div class="gate">
+  <div class="tag">\u26a0 STOP \u00b7 READ \u00b7 THEN PROCEED</div>
+  <h1>You just clicked a link to a site called<br>&ldquo;should I click this link?&rdquo;</h1>
+
+  <p>And you clicked it. Immediately. Without checking.</p>
+
+  <p><strong>Good news:</strong> you're in the right place \u2014 this really is the Cyber
+  Training Academy range. <strong>Bad news:</strong> you didn't know that when you clicked.
+  That's the whole lesson, and you just lived it.</p>
+
+  <div class="urlbar">
+    Look at what you actually loaded:<br><br>
+    https://ctf.<b>shouldiclickthislink.com</b>/
+  </div>
+
+  <p>If a domain has to <em>ask</em> whether you should trust it, that is not a
+  recommendation. Real attackers won't be this honest with you.</p>
+
+  <div class="checklist">
+    <h2>BEFORE YOU CLICK \u2014 EVERY TIME</h2>
+    <ul>
+      <li>Hover first and read the <strong>real</strong> destination. Link text lies; the URL doesn't.</li>
+      <li>Read the domain <strong>right to left</strong>. In <code>login.microsoft.evil.com</code>, the owner is <code>evil.com</code>.</li>
+      <li>Watch for lookalikes: <code>rn</code> vs <code>m</code>, <code>0</code> vs <code>O</code>, extra hyphens, bonus subdomains.</li>
+      <li>Unexpected attachment, urgent tone, or a request for credentials? Treat it as hostile until proven otherwise.</li>
+      <li>Anything touching money, passwords, or MFA: <strong>verify out-of-band</strong>. Phone the person. Don't reply to the email.</li>
+      <li>Not sure? <strong>Don't click \u2014 report it.</strong> Nobody has ever been fired for reporting a phish.</li>
+    </ul>
+  </div>
+
+  <div class="warnbox">
+    <h2>ABOUT THIS TRAINING RANGE</h2>
+    Everything past this point is <strong>deliberately broken on purpose</strong> \u2014 weak
+    cookies, default passwords, SQL injection, command injection, secrets sitting in plain
+    sight. It is a lab. Nothing here reflects how a healthy production site behaves, and
+    none of these techniques belong on a system you don't have written permission to test.
+  </div>
+
+  <p>Now go break it \u2014 on purpose, in here, where it's allowed.</p>
+
+  <form method="post" action="/welcome">
+    <button class="enter-btn" type="submit">I read it. I verified the domain. Let me in \u2192</button>
+  </form>
+
+  <p class="kicker">
+    This page exists because the fastest way to un-train a user is to reward them for
+    clicking. If this link had been real, the right move was to close the tab.
+  </p>
+</div>
+</body></html>
+"""
+
 # ── Routes ────────────────────────────────────────────────────────────────────
+
+@app.route("/welcome", methods=["GET", "POST"])
+def welcome():
+    """Phishing-awareness splash. POST (a button, not a link) acknowledges it."""
+    if request.method == "POST":
+        session["warned"] = True
+        return redirect(url_for("index"))
+    return render_template_string(SPLASH_PAGE)
+
 
 @app.route("/")
 def index():
+    if not session.get("warned"):
+        return redirect(url_for("welcome"))
     solved = get_solved()
     score = get_score()
     pct = round(score / TOTAL_POINTS * 100)
