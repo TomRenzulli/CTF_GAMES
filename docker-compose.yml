@@ -39,6 +39,9 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
+    networks:
+      - ctfnet
+
     healthcheck:
       test: ["CMD", "python", "-c",
              "import urllib.request;urllib.request.urlopen('http://127.0.0.1:9300/welcome').read()"]
@@ -46,3 +49,17 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+# A pinned bridge with a pinned name, so the host egress rule has a stable
+# target. Compose otherwise auto-allocates this subnet (172.18+, NOT docker0's
+# 172.17) and the value shifts as networks come and go - a firewall rule
+# written against a floating subnet silently stops matching.
+networks:
+  ctfnet:
+    name: beractf_net
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-beractf
+    ipam:
+      config:
+        - subnet: 172.28.77.0/24

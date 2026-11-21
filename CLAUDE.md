@@ -152,14 +152,72 @@ can't be made safe, so the blast radius is capped at the container boundary in
 `/tmp` and `/dev/shm` are tmpfs because the app and gunicorn need to write there.
 
 **Egress blocking is not in compose and must be done on the host** — without it that
-shell can mine crypto, scan third parties from your IP, or pull a second stage:
+shell can mine crypto, scan third parties from your IP, or pull a second stage. The app
+needs *zero* outbound connectivity: the Google Fonts `<link>` tags are fetched by the
+student's browser, not the server.
+
+Match on the **interface**, not a subnet:
 ```bash
-# adjust the subnet to the actual bridge: docker network inspect bridge
-iptables -I DOCKER-USER -s 172.17.0.0/16 ! -d 172.17.0.0/16 -j DROP
-apt install -y iptables-persistent && netfilter-persistent save
+iptables -I DOCKER-USER -i br-beractf ! -o br-beractf -j DROP
 ```
+`br-beractf` is pinned in `docker-compose.yml` (`com.docker.network.bridge.name`)
+precisely so this rule has a stable target. **Do not write this rule against
+`172.17.0.0/16`** — that is `docker0`, the default bridge, which Compose does not use.
+Compose auto-allocates its project network from Docker's address pool (`172.18.0.0/16`
+upward) and that value *shifts* as networks are created and removed, so a subnet-based
+rule silently stops matching. Pinning the bridge name avoids the whole class of problem.
+
+Scoping to one interface also means `docker build` is unaffected — builds run on the
+default bridge and still need the network for `pip install`.
+
 This is also the right fix for the ufw-bypass problem: Docker writes its own iptables
-rules, so `DOCKER-USER` is the chain that actually governs container traffic.
+rules, so `DOCKER-USER` is the chain that actually governs container traffic. Verify:
+```bash
+docker compose exec beractf python -c \
+  "import urllib.request;urllib.request.urlopen('http://1.1.1.1',timeout=3)"   # must fail
+iptables -L DOCKER-USER -v -n          # packet counter should climb
+```
+
+### fail2ban coexistence
+**No conflict.** fail2ban's jails jump from `INPUT`; `DOCKER-USER` lives in `FORWARD`.
+Different chains, different traffic paths, opposite directions — fail2ban blocks inbound
+to host services, this rule blocks outbound from the container.
+
+The usual Docker/fail2ban trap doesn't apply here either: fail2ban normally *can't* see
+traffic to published container ports, because Docker's DNAT sends it through `FORWARD`
+rather than `INPUT`. Port 9300 is bound to `127.0.0.1` and every real client hits
+**nginx**, a host process, so the nginx and sshd jails work exactly as expected.
+
+**Do not use `iptables-persistent` on this host.** `netfilter-persistent save` snapshots
+fail2ban's live `f2b-*` chains and whatever bans are active at that moment into
+`/etc/iptables/rules.v4`. On reboot those get restored, then fail2ban starts and tries to
+create the same chains — duplicate rules, noisy errors, and stale bans frozen in. Persist
+just this one rule with a systemd unit ordered after Docker instead:
+
+```ini
+# /etc/systemd/system/beractf-egress.service
+[Unit]
+Description=Block beractf container egress
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# -C tests first so repeated starts don't stack duplicate rules
+ExecStart=/bin/sh -c '/sbin/iptables -C DOCKER-USER -i br-beractf ! -o br-beractf -j DROP 2>/dev/null || /sbin/iptables -I DOCKER-USER -i br-beractf ! -o br-beractf -j DROP'
+
+[Install]
+WantedBy=multi-user.target
+```
+```bash
+systemctl daemon-reload && systemctl enable --now beractf-egress
+```
+
+Note this rule governs *forwarded* traffic. The container can still reach host services
+on its gateway IP (that path is `INPUT`, not `FORWARD`). Nothing needs it, so you can add
+`iptables -I INPUT -i br-beractf -j DROP` for belt-and-braces — test the healthcheck
+afterwards.
 
 The app needs **zero** outbound connectivity — the Google Fonts `<link>` tags are fetched
 by the student's browser, not the server.
@@ -256,9 +314,11 @@ certbot --nginx -d ctf.shouldiclickthislink.com
 - If proxied: set SSL/TLS mode to **Full (strict)**
 
 ### Block container egress (required — see Security Posture)
+Interface-based, because Compose's subnet floats. Persist with the systemd unit in
+Security Posture, **not** iptables-persistent (it collides with fail2ban).
 ```bash
-iptables -I DOCKER-USER -s 172.17.0.0/16 ! -d 172.17.0.0/16 -j DROP
-apt install -y iptables-persistent && netfilter-persistent save
+iptables -I DOCKER-USER -i br-beractf ! -o br-beractf -j DROP
+systemctl enable --now beractf-egress    # see Security Posture for the unit file
 ```
 
 ### Pulling updates
