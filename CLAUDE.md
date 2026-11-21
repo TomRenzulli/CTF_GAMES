@@ -12,7 +12,7 @@ A beginner-focused Capture The Flag (CTF) web platform built for the **Cyber CTF
 - **Backend:** Python 3.11 / Flask 3.0.3
 - **Database:** SQLite (ephemeral, `/tmp/users.db` — seeded at startup for challenge 19)
 - **Container:** Docker (python:3.11-slim), orchestrated with docker-compose
-- **Production:** Linode Nanode (Newark NJ) → nginx reverse proxy → Flask on `127.0.0.1:9300`
+- **Production:** Linode Nanode (Newark NJ) → nginx reverse proxy → gunicorn on `127.0.0.1:9300`
 - **TLS:** Let's Encrypt via certbot --nginx
 - **DNS:** Cloudflare (A record → Linode IP)
 
@@ -54,8 +54,8 @@ BERACTF/
 | 7 | What's in a Name? | File Analysis | file command on ZIP named .txt |
 | 8 | Caesar's Secret | Crypto | ROT13 decode |
 | 9 | Shift Happens | Crypto | Caesar brute-force |
-| 10 | Cookie Monster | Web | Set admin=true cookie |
-| 11 | Open Sesame | Web | ?access=granted URL param |
+| 10 | Cookie Monster | Web | Set `role=admin` cookie |
+| 11 | Open Sesame | Web | `?user=admin` URL param |
 | 12 | The Forbidden Path | Recon | robots.txt |
 | 13 | The Backup | Recon | Directory guess → /backup |
 | 14 | Picture This | Forensics | PNG tEXt metadata chunk |
@@ -131,6 +131,54 @@ Each challenge page has a `▶ Training Notes` section (`.notes-section` CSS cla
 
 ---
 
+## Security Posture
+
+This app is **deliberately vulnerable** — that is the product. So a security review has
+to separate three things, and anyone scanning this repo should read this first.
+
+### 1. Intentional vulnerabilities — do NOT "fix" these
+Challenges 10–20 are the curriculum: `shell=True` command injection (ch18), string-built
+SQL (ch19), cookie-based auth (ch10), URL-param authorization (ch11), guessable tokens
+(ch17), default creds (ch16), secrets in headers/comments/robots.txt. The injection sites
+carry `# nosec` markers with a reason so that real findings don't drown in scanner noise.
+**If a scanner flags one of these, that's the scanner working correctly.** Add a
+suppression, don't patch the lesson.
+
+### 2. Containment — how the intentional RCE is made survivable
+Challenge 18 gives anyone who reaches the site code execution in the container. The app
+can't be made safe, so the blast radius is capped at the container boundary in
+`docker-compose.yml`: non-root user, `read_only` root filesystem, `cap_drop: [ALL]`,
+`no-new-privileges`, `pids_limit`, `mem_limit`/`memswap_limit`, `cpus`, capped logs.
+`/tmp` and `/dev/shm` are tmpfs because the app and gunicorn need to write there.
+
+**Egress blocking is not in compose and must be done on the host** — without it that
+shell can mine crypto, scan third parties from your IP, or pull a second stage:
+```bash
+# adjust the subnet to the actual bridge: docker network inspect bridge
+iptables -I DOCKER-USER -s 172.17.0.0/16 ! -d 172.17.0.0/16 -j DROP
+apt install -y iptables-persistent && netfilter-persistent save
+```
+This is also the right fix for the ufw-bypass problem: Docker writes its own iptables
+rules, so `DOCKER-USER` is the chain that actually governs container traffic.
+
+The app needs **zero** outbound connectivity — the Google Fonts `<link>` tags are fetched
+by the student's browser, not the server.
+
+### 3. Real defects — these get fixed normally
+Anything not serving a challenge is an ordinary bug. Fixed so far: reflected XSS in
+`/param-challenge` (escaped on output; the ch11 trust decision is untouched), unpinned
+transitive dependencies, Flask's dev server in production, missing session cookie flags.
+
+### Deliberate non-goals
+- **No CSRF protection.** It would require `flask-wtf` across every form, including the
+  intentionally-vulnerable ones, to prevent someone submitting a flag on another player's
+  behalf. Not worth the complexity here — but it would make a good future challenge.
+- **No CSP.** The templates are heavily inline-styled, so a real CSP needs
+  `unsafe-inline`, which buys little. HSTS and the cheap headers belong at nginx.
+- **No persistent scoreboard.** Session-based by design (see Scoring).
+
+---
+
 ## Docker
 
 ### Build & Run
@@ -175,6 +223,17 @@ Or restrict by IP with `allow <club-cidr>; deny all;` in the `location` block.
 server {
     listen 80;
     server_name ctf.shouldiclickthislink.com;
+    # Cheap response headers. Challenge 5's own training notes teach that the
+    # absence of these is a pentest finding, so the platform should set them.
+    # No CSP: the templates are inline-styled (see Deliberate non-goals).
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy no-referrer always;
+    # certbot adds the TLS block; add HSTS only once HTTPS is confirmed working.
+    # add_header Strict-Transport-Security "max-age=31536000" always;
+
+    client_max_body_size 1m;
+
     location / {
         auth_basic "Cyber CTF";
         auth_basic_user_file /etc/nginx/.htpasswd;
@@ -196,15 +255,40 @@ certbot --nginx -d ctf.shouldiclickthislink.com
 - Proxy: **DNS only (grey cloud)** during cert issuance; optionally enable orange cloud after
 - If proxied: set SSL/TLS mode to **Full (strict)**
 
+### Block container egress (required — see Security Posture)
+```bash
+iptables -I DOCKER-USER -s 172.17.0.0/16 ! -d 172.17.0.0/16 -j DROP
+apt install -y iptables-persistent && netfilter-persistent save
+```
+
 ### Pulling updates
 ```bash
+sudo -i                 # not `sudo git pull` — the repo is root-owned, and sudo
+                        # alone leaves HOME wrong, which trips git's
+                        # safe.directory ownership check
 cd /opt/beractf && git pull && docker compose up -d --build
 ```
+
+### Post-deploy smoke test
+```bash
+curl -sI https://ctf.shouldiclickthislink.com/ | head -1          # 302 -> /welcome
+curl -s  https://ctf.shouldiclickthislink.com/welcome | grep -c shouldiclick
+```
+Then in a browser: splash appears, button enters, brand links home, `/docs` lists files,
+and **challenge 18 still executes** (`cap_drop: [ALL]` removes CAP_NET_RAW, so if
+`iputils-ping` is present `ping` itself stops resolving — the injection still works,
+which is what the challenge actually tests).
 
 ---
 
 ## Development Notes
-- `app.py` runs Flask's built-in server with `debug=False` — never turn debug on in production (the Werkzeug debugger allows code execution); consider gunicorn for heavier load
+- Served by **gunicorn** (2 workers, 4 threads) via the Dockerfile `CMD`; `app.run()` at the
+  bottom of `app.py` is for local `python app.py` only. `--worker-tmp-dir /dev/shm` is
+  required because the root filesystem is read-only. Never enable Flask debug mode in
+  production — the Werkzeug debugger allows code execution.
+- Two optional env vars: `CTF_SECRET_KEY` (stable session signing key — set it so a
+  redeploy doesn't wipe every player's score mid-event) and `CTF_COOKIE_SECURE=1` (marks
+  the session cookie Secure; enable in production, leave off for local HTTP).
 - The SQLite DB is ephemeral — it resets every time the container restarts (intentional)
 - Challenge 18 uses `subprocess.run()` with shell injection — intentionally vulnerable; only expose it behind nginx auth or an IP allowlist (see Deployment)
 - `generate.py` uses `pathlib` for cross-environment path resolution — do not hardcode paths

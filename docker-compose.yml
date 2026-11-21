@@ -1,11 +1,48 @@
-version: "3.9"
-
 services:
   beractf:
     build: .
     container_name: beractf
     restart: unless-stopped
+
+    # Bound to loopback on purpose: the app is only reachable through nginx.
+    # Docker-published ports bypass ufw, so "9300:9300" would expose this
+    # deliberately vulnerable app directly on the public IP.
     ports:
       - "127.0.0.1:9300:9300"
+
     environment:
       - FLASK_ENV=production
+      # Set CTF_SECRET_KEY to keep player scores alive across redeploys.
+      # Generate once with: python3 -c "import secrets;print(secrets.token_hex(32))"
+      - CTF_SECRET_KEY=${CTF_SECRET_KEY:-}
+      # Marks the session cookie Secure. Enable in production (HTTPS via
+      # certbot); leave at 0 for local http://localhost development.
+      - CTF_COOKIE_SECURE=${CTF_COOKIE_SECURE:-0}
+
+    # ── Containment ──────────────────────────────────────────────────────────
+    # Challenge 18 is a real command injection, so anyone who reaches the site
+    # gets code execution in this container. None of the below makes the app
+    # safe; it limits the blast radius to this container and this CPU slice.
+    read_only: true          # no persistence, no dropped tooling
+    tmpfs:
+      - /tmp                 # app writes /tmp/users.db (challenge 19)
+      - /dev/shm:size=64m    # gunicorn worker heartbeat
+    cap_drop: [ALL]          # no raw sockets, no mount, no chown
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128          # a one-line fork bomb otherwise takes the host down
+    mem_limit: 256m
+    memswap_limit: 256m      # without this, mem_limit just pushes into swap
+    cpus: 0.5
+
+    logging:                 # a chatty shell shouldn't fill the host disk
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request;urllib.request.urlopen('http://127.0.0.1:9300/welcome').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

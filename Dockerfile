@@ -20,4 +20,14 @@ EXPOSE 9300
 
 USER ctfuser
 
-CMD ["python", "app.py"]
+# gunicorn, not Flask's dev server: the Werkzeug dev server is single-threaded
+# and not built for untrusted traffic. --worker-tmp-dir /dev/shm is required
+# because the container runs with a read-only root filesystem.
+CMD ["gunicorn", \
+     "--bind", "0.0.0.0:9300", \
+     "--workers", "2", \
+     "--threads", "4", \
+     "--timeout", "30", \
+     "--worker-tmp-dir", "/dev/shm", \
+     "--access-logfile", "-", \
+     "app:app"]
