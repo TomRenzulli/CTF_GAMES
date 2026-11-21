@@ -25,8 +25,21 @@ CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
   --print-to-pdf="../docs/OT_101_From_IT_to_OT.pdf" "file://$PWD/ot101.html"
 ```
 
-Repeat for `wireshark.html` → `Getting_Started_with_Wireshark.pdf` and
-`phishing.html` → `Analysts_Guide_to_Phishing_Emails.pdf`.
+Repeat for each source:
+
+| Source | Output |
+|---|---|
+| `ot101.html` | `OT_101_From_IT_to_OT.pdf` |
+| `wireshark.html` | `Getting_Started_with_Wireshark.pdf` |
+| `phishing.html` | `Analysts_Guide_to_Phishing_Emails.pdf` |
+| `space.html` | `Space_and_Satellite_Hacking.pdf` |
+| `automotive.html` | `Car_and_Automotive_Hacking.pdf` |
+| `otics_hacking.html` | `OT_ICS_Hacking_Protocols_and_Tools.pdf` |
+
+After rendering, check pagination — Chrome will strand an `<h2>` at the foot of a
+page when the table that follows it is too tall to fit. `style.css` sets
+`break-after: avoid` on headings, which is not always enough; wrap the heading and
+its table in a `<div style="break-inside:avoid">` when it happens.
 
 Fonts resolve to Helvetica/Arial on macOS and Liberation Sans on Linux — both
 metric-compatible, so output is consistent either way.
