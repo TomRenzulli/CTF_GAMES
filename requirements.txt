@@ -1,1 +1,12 @@
-flask==3.0.3
+# Fully pinned, including transitive deps: two builds a month apart must be the
+# same app. Regenerate with `pip-compile` or `pip freeze` after any bump.
+Flask==3.0.3
+gunicorn==27.0.1
+
+# Flask's transitive dependencies
+blinker==1.9.0
+click==8.5.1
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.4
+Werkzeug==3.1.9

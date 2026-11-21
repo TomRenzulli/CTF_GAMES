@@ -12,7 +12,7 @@ A beginner-focused Capture The Flag (CTF) web platform built for the **Cyber CTF
 - **Backend:** Python 3.11 / Flask 3.0.3
 - **Database:** SQLite (ephemeral, `/tmp/users.db` — seeded at startup for challenge 19)
 - **Container:** Docker (python:3.11-slim), orchestrated with docker-compose
-- **Production:** Linode Nanode (Newark NJ) → nginx reverse proxy → Flask on `127.0.0.1:9300`
+- **Production:** Linode Nanode (Newark NJ) → nginx reverse proxy → gunicorn on `127.0.0.1:9300`
 - **TLS:** Let's Encrypt via certbot --nginx
 - **DNS:** Cloudflare (A record → Linode IP)
 
@@ -54,8 +54,8 @@ BERACTF/
 | 7 | What's in a Name? | File Analysis | file command on ZIP named .txt |
 | 8 | Caesar's Secret | Crypto | ROT13 decode |
 | 9 | Shift Happens | Crypto | Caesar brute-force |
-| 10 | Cookie Monster | Web | Set admin=true cookie |
-| 11 | Open Sesame | Web | ?access=granted URL param |
+| 10 | Cookie Monster | Web | Set `role=admin` cookie |
+| 11 | Open Sesame | Web | `?user=admin` URL param |
 | 12 | The Forbidden Path | Recon | robots.txt |
 | 13 | The Backup | Recon | Directory guess → /backup |
 | 14 | Picture This | Forensics | PNG tEXt metadata chunk |
@@ -131,6 +131,112 @@ Each challenge page has a `▶ Training Notes` section (`.notes-section` CSS cla
 
 ---
 
+## Security Posture
+
+This app is **deliberately vulnerable** — that is the product. So a security review has
+to separate three things, and anyone scanning this repo should read this first.
+
+### 1. Intentional vulnerabilities — do NOT "fix" these
+Challenges 10–20 are the curriculum: `shell=True` command injection (ch18), string-built
+SQL (ch19), cookie-based auth (ch10), URL-param authorization (ch11), guessable tokens
+(ch17), default creds (ch16), secrets in headers/comments/robots.txt. The injection sites
+carry `# nosec` markers with a reason so that real findings don't drown in scanner noise.
+**If a scanner flags one of these, that's the scanner working correctly.** Add a
+suppression, don't patch the lesson.
+
+### 2. Containment — how the intentional RCE is made survivable
+Challenge 18 gives anyone who reaches the site code execution in the container. The app
+can't be made safe, so the blast radius is capped at the container boundary in
+`docker-compose.yml`: non-root user, `read_only` root filesystem, `cap_drop: [ALL]`,
+`no-new-privileges`, `pids_limit`, `mem_limit`/`memswap_limit`, `cpus`, capped logs.
+`/tmp` and `/dev/shm` are tmpfs because the app and gunicorn need to write there.
+
+**Egress blocking is not in compose and must be done on the host** — without it that
+shell can mine crypto, scan third parties from your IP, or pull a second stage. The app
+needs *zero* outbound connectivity: the Google Fonts `<link>` tags are fetched by the
+student's browser, not the server.
+
+Match on the **interface**, not a subnet:
+```bash
+iptables -I DOCKER-USER -i br-beractf ! -o br-beractf -j DROP
+```
+`br-beractf` is pinned in `docker-compose.yml` (`com.docker.network.bridge.name`)
+precisely so this rule has a stable target. **Do not write this rule against
+`172.17.0.0/16`** — that is `docker0`, the default bridge, which Compose does not use.
+Compose auto-allocates its project network from Docker's address pool (`172.18.0.0/16`
+upward) and that value *shifts* as networks are created and removed, so a subnet-based
+rule silently stops matching. Pinning the bridge name avoids the whole class of problem.
+
+Scoping to one interface also means `docker build` is unaffected — builds run on the
+default bridge and still need the network for `pip install`.
+
+This is also the right fix for the ufw-bypass problem: Docker writes its own iptables
+rules, so `DOCKER-USER` is the chain that actually governs container traffic. Verify:
+```bash
+docker compose exec beractf python -c \
+  "import urllib.request;urllib.request.urlopen('http://1.1.1.1',timeout=3)"   # must fail
+iptables -L DOCKER-USER -v -n          # packet counter should climb
+```
+
+### fail2ban coexistence
+**No conflict.** fail2ban's jails jump from `INPUT`; `DOCKER-USER` lives in `FORWARD`.
+Different chains, different traffic paths, opposite directions — fail2ban blocks inbound
+to host services, this rule blocks outbound from the container.
+
+The usual Docker/fail2ban trap doesn't apply here either: fail2ban normally *can't* see
+traffic to published container ports, because Docker's DNAT sends it through `FORWARD`
+rather than `INPUT`. Port 9300 is bound to `127.0.0.1` and every real client hits
+**nginx**, a host process, so the nginx and sshd jails work exactly as expected.
+
+**Do not use `iptables-persistent` on this host.** `netfilter-persistent save` snapshots
+fail2ban's live `f2b-*` chains and whatever bans are active at that moment into
+`/etc/iptables/rules.v4`. On reboot those get restored, then fail2ban starts and tries to
+create the same chains — duplicate rules, noisy errors, and stale bans frozen in. Persist
+just this one rule with a systemd unit ordered after Docker instead:
+
+```ini
+# /etc/systemd/system/beractf-egress.service
+[Unit]
+Description=Block beractf container egress
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# -C tests first so repeated starts don't stack duplicate rules
+ExecStart=/bin/sh -c '/sbin/iptables -C DOCKER-USER -i br-beractf ! -o br-beractf -j DROP 2>/dev/null || /sbin/iptables -I DOCKER-USER -i br-beractf ! -o br-beractf -j DROP'
+
+[Install]
+WantedBy=multi-user.target
+```
+```bash
+systemctl daemon-reload && systemctl enable --now beractf-egress
+```
+
+Note this rule governs *forwarded* traffic. The container can still reach host services
+on its gateway IP (that path is `INPUT`, not `FORWARD`). Nothing needs it, so you can add
+`iptables -I INPUT -i br-beractf -j DROP` for belt-and-braces — test the healthcheck
+afterwards.
+
+The app needs **zero** outbound connectivity — the Google Fonts `<link>` tags are fetched
+by the student's browser, not the server.
+
+### 3. Real defects — these get fixed normally
+Anything not serving a challenge is an ordinary bug. Fixed so far: reflected XSS in
+`/param-challenge` (escaped on output; the ch11 trust decision is untouched), unpinned
+transitive dependencies, Flask's dev server in production, missing session cookie flags.
+
+### Deliberate non-goals
+- **No CSRF protection.** It would require `flask-wtf` across every form, including the
+  intentionally-vulnerable ones, to prevent someone submitting a flag on another player's
+  behalf. Not worth the complexity here — but it would make a good future challenge.
+- **No CSP.** The templates are heavily inline-styled, so a real CSP needs
+  `unsafe-inline`, which buys little. HSTS and the cheap headers belong at nginx.
+- **No persistent scoreboard.** Session-based by design (see Scoring).
+
+---
+
 ## Docker
 
 ### Build & Run
@@ -175,6 +281,17 @@ Or restrict by IP with `allow <club-cidr>; deny all;` in the `location` block.
 server {
     listen 80;
     server_name ctf.shouldiclickthislink.com;
+    # Cheap response headers. Challenge 5's own training notes teach that the
+    # absence of these is a pentest finding, so the platform should set them.
+    # No CSP: the templates are inline-styled (see Deliberate non-goals).
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy no-referrer always;
+    # certbot adds the TLS block; add HSTS only once HTTPS is confirmed working.
+    # add_header Strict-Transport-Security "max-age=31536000" always;
+
+    client_max_body_size 1m;
+
     location / {
         auth_basic "Cyber CTF";
         auth_basic_user_file /etc/nginx/.htpasswd;
@@ -196,15 +313,42 @@ certbot --nginx -d ctf.shouldiclickthislink.com
 - Proxy: **DNS only (grey cloud)** during cert issuance; optionally enable orange cloud after
 - If proxied: set SSL/TLS mode to **Full (strict)**
 
+### Block container egress (required — see Security Posture)
+Interface-based, because Compose's subnet floats. Persist with the systemd unit in
+Security Posture, **not** iptables-persistent (it collides with fail2ban).
+```bash
+iptables -I DOCKER-USER -i br-beractf ! -o br-beractf -j DROP
+systemctl enable --now beractf-egress    # see Security Posture for the unit file
+```
+
 ### Pulling updates
 ```bash
+sudo -i                 # not `sudo git pull` — the repo is root-owned, and sudo
+                        # alone leaves HOME wrong, which trips git's
+                        # safe.directory ownership check
 cd /opt/beractf && git pull && docker compose up -d --build
 ```
+
+### Post-deploy smoke test
+```bash
+curl -sI https://ctf.shouldiclickthislink.com/ | head -1          # 302 -> /welcome
+curl -s  https://ctf.shouldiclickthislink.com/welcome | grep -c shouldiclick
+```
+Then in a browser: splash appears, button enters, brand links home, `/docs` lists files,
+and **challenge 18 still executes** (`cap_drop: [ALL]` removes CAP_NET_RAW, so if
+`iputils-ping` is present `ping` itself stops resolving — the injection still works,
+which is what the challenge actually tests).
 
 ---
 
 ## Development Notes
-- `app.py` runs Flask's built-in server with `debug=False` — never turn debug on in production (the Werkzeug debugger allows code execution); consider gunicorn for heavier load
+- Served by **gunicorn** (2 workers, 4 threads) via the Dockerfile `CMD`; `app.run()` at the
+  bottom of `app.py` is for local `python app.py` only. `--worker-tmp-dir /dev/shm` is
+  required because the root filesystem is read-only. Never enable Flask debug mode in
+  production — the Werkzeug debugger allows code execution.
+- Two optional env vars: `CTF_SECRET_KEY` (stable session signing key — set it so a
+  redeploy doesn't wipe every player's score mid-event) and `CTF_COOKIE_SECURE=1` (marks
+  the session cookie Secure; enable in production, leave off for local HTTP).
 - The SQLite DB is ephemeral — it resets every time the container restarts (intentional)
 - Challenge 18 uses `subprocess.run()` with shell injection — intentionally vulnerable; only expose it behind nginx auth or an IP allowlist (see Deployment)
 - `generate.py` uses `pathlib` for cross-environment path resolution — do not hardcode paths

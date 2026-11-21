@@ -6,10 +6,23 @@ Each flag teaches exactly one concept before the next builds on it.
 from flask import (Flask, request, render_template_string,
                    redirect, url_for, session, send_from_directory,
                    Response)
-import secrets, base64, sqlite3, os, subprocess, hashlib
+import secrets, base64, sqlite3, os, subprocess, hashlib, html
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
+
+# A stable key keeps scores alive across redeploys; without it every container
+# restart silently resets every player mid-event. Falls back to ephemeral.
+app.secret_key = os.environ.get("CTF_SECRET_KEY") or secrets.token_hex(16)
+
+app.config.update(
+    # The session cookie only carries a score, but this app is the example
+    # students copy from, so it gets the flags a real one should have.
+    SESSION_COOKIE_HTTPONLY=True,   # default, stated explicitly
+    SESSION_COOKIE_SAMESITE="Lax",
+    # Enabled in production (HTTPS via certbot); off locally so http://localhost works.
+    SESSION_COOKIE_SECURE=os.environ.get("CTF_COOKIE_SECURE", "0") == "1",
+    MAX_CONTENT_LENGTH=64 * 1024,   # no reason to accept a large body anywhere
+)
 
 # ── Challenge registry ────────────────────────────────────────────────────────
 CHALLENGES = [
@@ -376,7 +389,9 @@ def init_db():
     conn = sqlite3.connect("/tmp/users.db")
     conn.execute("CREATE TABLE IF NOT EXISTS users (username TEXT, password TEXT, flag TEXT)")
     conn.execute("DELETE FROM users")
-    conn.execute("INSERT INTO users VALUES ('admin','s3cr3tP@ss!','FLAG{sql_injection_bypasses_auth}')")
+    # Seed data for challenge 19. Not a real credential - throwaway string in an
+    # ephemeral in-container SQLite file, rebuilt on every start.
+    conn.execute("INSERT INTO users VALUES ('admin','s3cr3tP@ss!','FLAG{sql_injection_bypasses_auth}')")  # nosec B105
     conn.execute("INSERT INTO users VALUES ('guest','guest','no_flag_for_guests')")
     conn.commit()
     conn.close()
@@ -1051,10 +1066,15 @@ def cookie_challenge():
 @app.route("/param-challenge")
 def param_challenge():
     user = request.args.get("user", "guest")
+    # The lesson here is the trust decision on the line below, not XSS.
+    # Escape on output so the "guest" branch can't be turned into script
+    # injection; challenge 11 (?user=admin) is unaffected.
+    safe_user = html.escape(user)
     if user == "admin":
         msg = f"<h2>Admin Panel</h2><p>Flag: <code>FLAG{{url_params_are_not_access_control}}</code></p>"
     else:
-        msg = f"<h2>Hello, {user}!</h2><p>You're logged in as <b>{user}</b>. Only admins can see the flag.</p>"
+        msg = (f"<h2>Hello, {safe_user}!</h2><p>You're logged in as "
+               f"<b>{safe_user}</b>. Only admins can see the flag.</p>")
     return f"""<!DOCTYPE html><html><head>
     <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
     <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}}
@@ -1169,10 +1189,14 @@ def ping_tool():
     output = ""
     if request.method == "POST":
         host = request.form.get("host", "")
-        # Intentionally vulnerable - no sanitisation
+        # CHALLENGE 18 - INTENTIONALLY VULNERABLE. This is the lesson, not a bug:
+        # unsanitised input into shell=True. Do not "fix" it. Containment is
+        # handled at the container boundary (see docker-compose.yml) - the
+        # container is non-root, read-only, capability-stripped, resource-capped
+        # and egress-blocked precisely because this line grants RCE.
         try:
-            result = subprocess.run(
-                f"ping -c 1 {host} 2>&1 || true",
+            result = subprocess.run(                      # nosec B602 - see above
+                f"ping -c 1 {host} 2>&1 || true",         # nosec B604
                 shell=True, capture_output=True, text=True, timeout=5
             )
             output = result.stdout + result.stderr
@@ -1205,7 +1229,10 @@ def sqli_login():
         try:
             conn = sqlite3.connect("/tmp/users.db")
             # Intentionally vulnerable query
-            query = f"SELECT flag FROM users WHERE username='{username}' AND password='{password}'"
+            # CHALLENGE 19 - INTENTIONALLY VULNERABLE string-built SQL. This is
+            # the lesson. A real app uses parameterised queries:
+            #   conn.execute("SELECT ... WHERE username=? AND password=?", (u, p))
+            query = f"SELECT flag FROM users WHERE username='{username}' AND password='{password}'"  # nosec B608
             cur = conn.execute(query)
             row = cur.fetchone()
             conn.close()
@@ -1272,8 +1299,8 @@ def final_vault():
         </body></html>"""
     return """<!DOCTYPE html><html><head>
     <link href='https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap' rel='stylesheet'>
-    <style>body{{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}}
-    h2{{color:#ff3860;}}</style></head><body>
+    <style>body{background:#05060a;color:#c8d0d8;font-family:'JetBrains Mono',monospace;padding:2rem;}
+    h2{color:#ff3860;}</style></head><body>
     <h2>🔒 Access Denied</h2><p>Wrong key. Keep working the chain.</p>
     </body></html>"""
 
