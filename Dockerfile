@@ -7,6 +7,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN useradd -m ctfuser
 
+# Writable state dir for the persisted session key (mounted as a volume)
+RUN mkdir -p /data && chown ctfuser:ctfuser /data
+
 # Copy everything
 COPY . .
 

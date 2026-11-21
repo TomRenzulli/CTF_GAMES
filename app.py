@@ -9,7 +9,44 @@ from flask import (Flask, request, render_template_string,
 import secrets, base64, sqlite3, os, subprocess, hashlib
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
+
+
+def _load_secret_key():
+    """Stable signing key so student progress survives a restart or redeploy.
+
+    A key generated per process would invalidate every session cookie on each
+    `docker compose up --build`, wiping everyone's solves mid-meeting, and would
+    break outright under multiple workers (each worker signing with its own key).
+    Priority: CTF_SECRET_KEY env var -> key file -> freshly generated key file.
+    """
+    env_key = os.environ.get("CTF_SECRET_KEY", "").strip()
+    if env_key:
+        return env_key
+
+    key_path = os.environ.get("CTF_SECRET_KEY_FILE", "/data/secret_key")
+    try:
+        with open(key_path, "r", encoding="utf-8") as fh:
+            stored = fh.read().strip()
+        if stored:
+            return stored
+    except OSError:
+        pass
+
+    generated = secrets.token_hex(32)
+    try:
+        # 0o600: readable only by the app user.
+        fd = os.open(key_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(generated)
+    except OSError:
+        # Read-only filesystem: fall back to an in-process key. Sessions still
+        # work for the life of the container; set CTF_SECRET_KEY to persist.
+        print("WARNING: could not persist session key to "
+              f"{key_path}; set CTF_SECRET_KEY to keep progress across restarts.")
+    return generated
+
+
+app.secret_key = _load_secret_key()
 
 # ── Challenge registry ────────────────────────────────────────────────────────
 CHALLENGES = [
@@ -400,6 +437,64 @@ def get_score():
     solved = get_solved()
     return sum(c["points"] for c in CHALLENGES if c["id"] in solved)
 
+
+# Characters that ride along on copy-paste from PDFs, terminals and chat apps.
+_JUNK_CHARS = dict.fromkeys(map(ord, "\u200b\u200c\u200d\ufeff\u00a0"), None)
+_QUOTE_MAP = str.maketrans({"\u2018": "'", "\u2019": "'",
+                            "\u201c": '"', "\u201d": '"'})
+
+
+def normalize_flag(raw):
+    """Canonical form for comparison: strips invisible junk, smart quotes and case.
+
+    Beginners lose far more attempts to copy-paste artifacts than to not knowing
+    the answer, so format trivia should never be the obstacle.
+    """
+    text = (raw or "").strip().translate(_JUNK_CHARS).translate(_QUOTE_MAP)
+    return " ".join(text.split()).casefold()
+
+
+def flag_inner(flag):
+    """The part inside FLAG{...}, so a wrapper-less answer can be recognized."""
+    norm = normalize_flag(flag)
+    if norm.startswith("flag{") and norm.endswith("}"):
+        return norm[len("flag{"):-1]
+    return norm
+
+
+# Built once: canonical flag -> challenge id, and inner text -> challenge id.
+NORM_FLAG_MAP = {normalize_flag(c["flag"]): c["id"] for c in CHALLENGES}
+INNER_FLAG_MAP = {flag_inner(c["flag"]): c["id"] for c in CHALLENGES}
+
+
+def grade_submission(submitted, challenge):
+    """Return (is_correct, message) with a useful hint on near-misses."""
+    guess = normalize_flag(submitted)
+    if not guess:
+        return False, "Enter a flag before submitting."
+
+    if guess == normalize_flag(challenge["flag"]):
+        return True, ""
+
+    # Right answer, wrong wrapper: "base64_is_not_encryption" with no FLAG{}.
+    if flag_inner(guess) == flag_inner(challenge["flag"]):
+        return False, ("Right answer, wrong format — wrap it exactly as "
+                       "<code>FLAG{...}</code> and submit again.")
+
+    # A valid flag, but for a different challenge.
+    other = NORM_FLAG_MAP.get(guess) or INNER_FLAG_MAP.get(flag_inner(guess))
+    if other and other != challenge["id"]:
+        return False, (f"That's the flag for Challenge {other:02d}, not this one. "
+                       "Double-check which challenge you're on.")
+
+    # Looks like a flag but the contents are wrong.
+    if guess.startswith("flag{"):
+        return False, ("Not quite — the format is right but the contents are wrong. "
+                       "Re-check your decoding, then open Training Notes below.")
+
+    return False, ("Incorrect flag. Flags look like <code>FLAG{...}</code> — "
+                   "if you found the inner text, include the wrapper.")
+
 # ── Main page template ────────────────────────────────────────────────────────
 BASE_STYLE = """
 :root {
@@ -409,7 +504,7 @@ BASE_STYLE = """
   --neon: #00ff9d;
   --neon2: #2de2ff;
   --text: #c8d0d8;
-  --dim: #5a6270;
+  --dim: #7c8696;   /* 5.5:1 on --bg — WCAG AA for small text (was #5a6270, 3.3:1) */
   --red: #ff3860;
   --amber: #ffb347;
 }
@@ -526,6 +621,7 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
   margin: 0 auto;
 }
 .card {
+  display: block;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.2rem;
@@ -533,8 +629,19 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
+  color: inherit;
+  text-decoration: none;
 }
-.card:hover { border-color: var(--neon); box-shadow: 0 0 16px rgba(0,255,157,0.12); }
+.card:hover {
+  border-color: var(--neon);
+  box-shadow: 0 0 16px rgba(0,255,157,0.12);
+  text-decoration: none;
+}
+.card:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 3px;
+  border-color: var(--neon);
+}
 .card.solved { border-color: rgba(0,255,157,0.4); background: rgba(0,255,157,0.03); }
 .card-num { font-size: 0.7rem; color: var(--dim); letter-spacing: 0.2em; margin-bottom: 0.4rem; }
 .card-title { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; }
@@ -600,7 +707,7 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
   {% if cat_challenges %}
   <div class="cat-row">{{ cat }}</div>
   {% for c in cat_challenges %}
-  <div class="card {% if c.id in solved %}solved{% endif %}" onclick="location.href='/challenge/{{ c.id }}'">
+  <a class="card {% if c.id in solved %}solved{% endif %}" href="/challenge/{{ c.id }}">
     {% if c.id in solved %}<span class="solved-badge">✓ SOLVED</span>{% endif %}
     <div class="card-num">CHALLENGE {{ '%02d'|format(c.id) }}</div>
     <div class="card-title">{{ c.title }}</div>
@@ -608,7 +715,7 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
       <span class="cat-badge">{{ c.category }}</span>
       <span class="pts">{{ c.points }} pts</span>
     </div>
-  </div>
+  </a>
   {% endfor %}
   {% endif %}
 {% endfor %}
@@ -762,7 +869,7 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
   <div class="solved-banner">✅ CHALLENGE SOLVED! +{{ c.points }} points</div>
   {% endif %}
   {% if error %}
-  <div class="error-banner">❌ {{ error }}</div>
+  <div class="error-banner">❌ {{ error|safe }}</div>
   {% endif %}
 
   <div class="story">{{ c.story|safe }}</div>
@@ -991,12 +1098,13 @@ def challenge(cid):
     already_solved = cid in solved_ids
     error = ""
     if request.method == "POST":
-        submitted = request.form.get("flag", "").strip()
-        if submitted == c["flag"]:
+        submitted = request.form.get("flag", "")
+        is_correct, message = grade_submission(submitted, c)
+        if is_correct:
             mark_solved(c["flag"])
             already_solved = True
         else:
-            error = f"Incorrect flag. Keep trying!"
+            error = message
     return render_template_string(CHALLENGE_PAGE,
         c=c, solved=already_solved, error=error, score=get_score())
 

@@ -102,6 +102,27 @@ The brand text in the top-left is an `<a href="/">` (`.brand` class) — the hom
 Each template carries its own copy of the header markup, so a header change means editing
 all four (`HEADER_HTML` is currently unused/dead code).
 
+### Session signing key (do not revert)
+`app.secret_key` comes from `_load_secret_key()`: `CTF_SECRET_KEY` env var →
+`CTF_SECRET_KEY_FILE` (default `/data/secret_key`, mode 0600) → generate and
+persist. `/data` is the `ctf-state` named volume, so the key — and therefore every
+student's solved challenges — survives `docker compose up -d --build`.
+A per-process `secrets.token_hex()` key (the original behavior) logged everyone out
+on each redeploy and would break outright under more than one worker, since each
+worker would sign cookies with a different key. `docker compose down -v` destroys
+the volume and the key; use plain `down`/`restart`.
+
+### Flag grading
+`grade_submission()` (not a bare `==`) handles every submission. `normalize_flag()`
+strips zero-width characters, BOM, non-breaking spaces and smart quotes, collapses
+whitespace and case-folds, so copy-paste artifacts never cost a student an attempt.
+**Flags are case-insensitive.** Failures return a targeted message: right answer
+without the `FLAG{}` wrapper, a valid flag for a different challenge, correct shape
+with wrong contents, or empty input. These messages contain `<code>` tags and are
+rendered with `{{ error|safe }}` on the challenge page — they are app-authored
+constants and never interpolate user input. The **index** banner is fed from a
+query parameter and must stay escaped.
+
 ### Startup
 - `init_db()` creates `/tmp/users.db` with an `admin` and a `guest` user for challenge 19 (credentials are in `init_db()`)
 - `/flag18.txt` is written at Docker build time (not at runtime)

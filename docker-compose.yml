@@ -9,3 +9,13 @@ services:
       - "127.0.0.1:9300:9300"
     environment:
       - FLASK_ENV=production
+      # Optional: pin the session signing key (e.g. in a gitignored .env file).
+      # Left empty, the app generates one and persists it in the ctf-state volume.
+      - CTF_SECRET_KEY=${CTF_SECRET_KEY:-}
+    volumes:
+      # Keeps the session signing key across `docker compose up --build`, so
+      # students don't lose their solved challenges on a redeploy.
+      - ctf-state:/data
+
+volumes:
+  ctf-state:
