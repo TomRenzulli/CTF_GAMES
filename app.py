@@ -636,85 +636,6 @@ CHALLENGES += [
             ("Key tools", "<code>python3 -c 'import email; ...'</code> or the <code>email</code> module's <code>walk()</code> &nbsp;·&nbsp; <code>munpack</code> &nbsp;·&nbsp; <code>base64 -d</code> &nbsp;·&nbsp; <code>oletools</code> (<code>olevba</code>) for Office macros &nbsp;·&nbsp; <b>never</b> double-click; use a VM with no network"),
         ],
     },
-
-    # ═══ OT / ICS Fundamentals ══════════════════════════════════════════════
-    {
-        "id": 33, "title": "33 · Reading Modbus",
-        "category": "Industrial Protocols", "module": "ot",
-        "skill": "Interpreting Modbus/TCP traffic",
-        "story": "This is an HMI polling a PLC — the most ordinary traffic in a plant. Your job is to learn "
-                 "to read it.<br><br>"
-                 "Download <a href='/files/modbus_poll.pcap'>modbus_poll.pcap</a>. Most of it is a repeated "
-                 "<i>Read Holding Registers</i> loop. One exchange is different: a device-identification "
-                 "request whose response carries a string. That string is the flag.<br><br>"
-                 "Notice what you <b>don't</b> see anywhere in this capture: any authentication at all.",
-        "flag": "FLAG{modbus_has_no_authentication}",
-        "points": 200,
-        "notes": [
-            ("How Modbus/TCP is framed", "A 7-byte MBAP header (transaction ID, protocol ID, length, unit ID) followed by a PDU: one function code plus its data. Function <code>0x03</code> reads holding registers, <code>0x01</code> reads coils, <code>0x05</code> writes a single coil, <code>0x06</code> writes a single register. Wireshark dissects TCP port 502 automatically, so the function codes are readable without any manual decoding."),
-            ("Designed in 1979, with no security", "Modbus has no authentication, no authorisation, no encryption and no integrity checking. Any host that can reach port 502 can issue any command, and the PLC will carry it out — not because it is misconfigured, but because the protocol has no concept of a credential. Security has to come entirely from the network around it."),
-            ("Real-world context", "Modbus still runs an enormous amount of industrial plant, power distribution and building management. You cannot patch the protocol, so defence is architectural: segmentation into Purdue-model zones, a conduit through a firewall or data diode, strict allow-lists of which hosts may talk to which PLCs, and passive monitoring that alerts on any unexpected function code."),
-            ("Key tools", "Wireshark's <code>modbus</code> dissector &nbsp;·&nbsp; <code>tshark -Y 'modbus'</code> &nbsp;·&nbsp; <code>-e modbus.func_code -e modbus.reference_num</code> as fields &nbsp;·&nbsp; the <code>pymodbus</code> library &nbsp;·&nbsp; <code>plcscan</code>, and Nmap's <code>modbus-discover</code> script"),
-        ],
-    },
-    {
-        "id": 34, "title": "34 · The Coil That Opened a Breaker",
-        "category": "Industrial Protocols", "module": "ot",
-        "skill": "Recognising an unauthenticated control-write attack",
-        "story": "At 05:13 a breaker on BUS-2 opened and 1,180 kW of load was shed. No operator touched it."
-                 "<br><br>"
-                 "Download <a href='/files/modbus_write.pcap'>modbus_write.pcap</a> and "
-                 "<a href='/files/breaker_alarm.log'>breaker_alarm.log</a>. An external address wrote "
-                 "directly to a coil and the PLC simply obeyed. Correlate the write in the capture with the "
-                 "alarm journal and read the acknowledgement token.",
-        "flag": "FLAG{coil_forced_breaker_opened}",
-        "points": 250,
-        "notes": [
-            ("Read is reconnaissance, write is impact", "The attacker reads coils first to learn the current state, then issues <b>Write Single Coil</b> (function <code>0x05</code>, value <code>0xFF00</code> for ON) and re-reads to confirm the change took effect. That read-write-verify pattern is the signature of someone manipulating a process rather than merely observing it — and it is the point at which a network intrusion becomes a physical event."),
-            ("Why correlation matters", "The capture proves a command was sent; the alarm journal proves the plant <i>moved</i>. Neither alone is the whole story — an IT analyst sees a packet, an operator sees a breaker trip. Incident response in OT only works when both timelines are laid side by side, which is why timestamp discipline across IT and OT systems is a prerequisite."),
-            ("Real-world context", "This is the mechanism behind the 2015 and 2016 Ukrainian grid attacks, where attackers operated breakers through legitimate control protocols. No exploit and no malware on the PLC were required — only reachability. That is why 'can this host reach port 502?' is the single most important question in an OT network review."),
-            ("Key tools", "<code>tshark -Y 'modbus.func_code==5'</code> isolates coil writes &nbsp;·&nbsp; Wireshark &rarr; <i>Statistics &gt; Conversations</i> to spot an unexpected peer &nbsp;·&nbsp; Zeek with industrial protocol parsers &nbsp;·&nbsp; passive OT monitoring (Nozomi, Claroty, Dragos) alerts on first-seen write commands"),
-        ],
-    },
-    {
-        "id": 35, "title": "35 · Telnet to a PLC",
-        "category": "OT Access", "module": "ot",
-        "skill": "Recovering credentials from legacy cleartext protocols",
-        "story": "A PLC gateway still exposes Telnet. Someone logged into it from an external address, and "
-                 "the whole session — username, password, everything after — crossed the network in the "
-                 "clear.<br><br>"
-                 "Download <a href='/files/plc_telnet.pcap'>plc_telnet.pcap</a>. Telnet sends each keystroke "
-                 "in its own packet, so you will need to reassemble the conversation. The session key the "
-                 "gateway issued on success is the flag.",
-        "flag": "FLAG{telnet_to_a_plc_in_2026}",
-        "points": 225,
-        "notes": [
-            ("Telnet is a plaintext terminal", "Telnet predates any notion of transport security: every keystroke and every byte of output travels unencrypted. Because it sends character-by-character rather than line-by-line, a password appears as a column of one-byte packets — invisible to a per-packet grep, obvious the moment you reassemble the stream."),
-            ("Why it is still running", "A PLC or gateway may have a 20-year service life, a vendor that no longer exists, and a maintenance window measured in minutes per year. 'Just turn Telnet off' can mean a firmware upgrade that voids certification or a process shutdown — so the honest mitigation is usually compensating controls: a jump host, strict allow-lists, and monitoring for any connection to port 23."),
-            ("Real-world context", "Shodan returns large numbers of internet-exposed industrial devices speaking Telnet, FTP and SNMPv1. The same reassembly technique recovers FTP and POP3 credentials, SNMP community strings, and unencrypted HTTP basic-auth headers. Finding one of these on an internal network is a finding in its own right, before anyone exploits it."),
-            ("Key tools", "Wireshark &rarr; <b>Follow &gt; TCP Stream</b> &nbsp;·&nbsp; <code>tshark -qz follow,tcp,ascii,0</code> &nbsp;·&nbsp; the <code>telnet</code> dissector reassembles keystrokes &nbsp;·&nbsp; <code>nmap -p23 --script telnet-encryption</code> &nbsp;·&nbsp; replace with SSH, or front it with a bastion"),
-        ],
-    },
-    {
-        "id": 36, "title": "36 · Safety Outranks Uptime",
-        "category": "OT Risk", "module": "ot",
-        "skill": "Applying the SRP triad to an OT change decision",
-        "story": "IT security optimises for <b>confidentiality first</b>. OT does not. In a plant the "
-                 "ordering is <b>Safety &rarr; Reliability &rarr; Performance</b> — the SRP triad — because "
-                 "the worst outcome here isn't a data breach, it's someone getting hurt.<br><br>"
-                 "Download <a href='/files/hmi_station.conf'>hmi_station.conf</a>. Read the change-control "
-                 "and interlock sections, and note how many findings this one file contains "
-                 "(<code>auth = none</code>, <code>allow_from = 0.0.0.0/0</code>, never patched). The "
-                 "<code>srp_precedence</code> value states the ordering — that's the flag.",
-        "flag": "FLAG{safety_outranks_uptime}",
-        "points": 275,
-        "notes": [
-            ("Why the triad inverts in OT", "IT protects information: confidentiality, integrity, availability. OT protects a physical process, where availability and integrity come first because the failure mode is a release, a fire or an injury — not a disclosure. Taking a running plant offline 'to be safe' can itself be the unsafe action, which is why patching habits that are obvious in IT are genuinely wrong here."),
-            ("Interlocks are not obstacles", "An interlock exists to make a dangerous state physically unreachable. Bypassing an overpressure trip to hit a production target trades <b>Safety</b> for <b>Performance</b> — an inversion of the ordering, and never a decision an individual operator is authorised to make. Hence <code>bypass_requires = two-person authorization</code>: the control is procedural because the consequence is physical."),
-            ("Reading this file as an assessor", "Four findings sit in plain sight: <code>auth = none</code> on a writable control protocol, <code>allow_from = 0.0.0.0/0</code> so any plant host may command it, <code>patch_window = none</code>, and an unauthenticated write path to equipment with real-world effects. Note that the first is a property of Modbus itself — the <i>fixable</i> finding is the reachability, which is why segmentation does the heavy lifting."),
-            ("Real-world context", "This framing drives IEC 62443 zones and conduits, the Purdue model, and why OT change control is deliberately slow. It is also why safety instrumented systems (SIS) are kept physically separate from the control network: so that compromising the DCS still cannot defeat the layer whose only job is to prevent harm."),
-        ],
-    },
 ]
 
 
@@ -746,12 +667,6 @@ MODULES = [
         "level": "Defensive",
         "blurb": "Triage real .eml files: trace Received hops to the true origin, read "
                  "SPF/DKIM/DMARC, unmask deceptive links, decode attachments safely.",
-    },
-    {
-        "slug": "ot", "name": "OT / ICS Fundamentals", "icon": "🏭",
-        "level": "Specialist",
-        "blurb": "Industrial control systems: read Modbus, watch an unauthenticated write "
-                 "open a breaker, pull credentials off Telnet, and apply the SRP triad.",
     },
 ]
 MODULE_BY_SLUG = {m["slug"]: m for m in MODULES}
@@ -902,18 +817,6 @@ HINT_TIERS.update({
     32: [("Nudge", "The attachment is base64 text sitting in the message source. You never need to run it to read it."),
          ("Method", "Parse the MIME parts and decode the base64 body of the attachment, or copy the base64 block out and decode it by hand."),
          ("Exact command", "<code>python3 -I -c \"import email;m=email.message_from_file(open('phish_04.eml'));[print(p.get_payload(decode=True).decode()) for p in m.walk() if p.get_filename()]\"</code>")],
-    33: [("Nudge", "Wireshark dissects port 502 as Modbus/TCP for you. Most packets are the same read loop — find the one exchange that isn't."),
-         ("Method", "Filter on Modbus and compare function codes. The repeated ones are <code>0x03</code> (Read Holding Registers); the odd one out is a device-identification request whose reply carries a string."),
-         ("Exact command", "<code>tshark -r modbus_poll.pcap -qz follow,tcp,ascii,0 | tail -5</code> &nbsp;or filter <code>modbus</code> in Wireshark and read the last response")],
-    34: [("Nudge", "Function code <code>0x05</code> is Write Single Coil. Who sent one, and is that address supposed to be talking to a PLC at all?"),
-         ("Method", "Isolate the coil write in the capture to confirm the command and its source, then line its timestamp up against the alarm journal and read the acknowledgement token."),
-         ("Exact command", "<code>tshark -r modbus_write.pcap -Y 'modbus.func_code==5' -T fields -e ip.src -e modbus.reference_num</code> &nbsp;then <code>grep ack_token breaker_alarm.log</code>")],
-    35: [("Nudge", "Telnet sends one keystroke per packet, so the password is never in any single packet. Same technique as challenge 22."),
-         ("Method", "Follow the TCP stream to reassemble the whole session. You'll see the login, the password typed character by character, and the key the gateway issued on success."),
-         ("Exact command", "<code>tshark -r plc_telnet.pcap -qz follow,tcp,ascii,0</code> &nbsp;— look for <code>session-key:</code>")],
-    36: [("Nudge", "This one is about judgement, not tooling. Read the file's own comments — it tells you how to rank the three vertices."),
-         ("Method", "Find the <code>[review]</code> section. It spells out the precedence order and stores it in a setting."),
-         ("Exact command", "<code>grep srp_precedence hmi_station.conf</code>")],
 })
 
 TAKEAWAYS.update({
@@ -929,10 +832,6 @@ TAKEAWAYS.update({
     30: "DMARC failure on a message claiming a real organisation is close to conclusive. Alignment is what matters.",
     31: "Link text and link destination are unrelated. Check the registrable domain, not the display text.",
     32: "Attachments are text in the message source — decode statically, never double-click. Double extensions hide intent.",
-    33: "Modbus has no authentication by design. You cannot patch that, so the network has to provide it.",
-    34: "Reachability is the vulnerability. If a host can reach port 502, it can operate the plant.",
-    35: "Legacy cleartext protocols hand over credentials to anyone on the path. Front them with a bastion or remove them.",
-    36: "In OT the order is Safety, then Reliability, then Performance. Anyone inverting it is making a decision that isn't theirs.",
 })
 
 DOC_LINKS.update({
@@ -948,10 +847,6 @@ DOC_LINKS.update({
     30: ["Analysts_Guide_to_Phishing_Emails.pdf"],
     31: ["Analysts_Guide_to_Phishing_Emails.pdf"],
     32: ["Analysts_Guide_to_Phishing_Emails.pdf"],
-    33: ["OT_101_From_IT_to_OT.pdf", "OT_ICS_Hacking_Protocols_and_Tools.pdf", "Getting_Started_with_Wireshark.pdf"],
-    34: ["OT_101_From_IT_to_OT.pdf", "OT_ICS_Hacking_Protocols_and_Tools.pdf"],
-    35: ["OT_ICS_Hacking_Protocols_and_Tools.pdf", "Getting_Started_with_Wireshark.pdf"],
-    36: ["OT_101_From_IT_to_OT.pdf", "OT_ICS_Hacking_Protocols_and_Tools.pdf"],
 })
 
 

@@ -57,7 +57,6 @@ Challenges are grouped into tracks (`module` on each challenge; `MODULES` define
 | 🌐 Network Traffic Analysis | 4 | 675 | Read real packet captures in Wireshark: harvest cleartext credentials, reassemble TCP streams, decode DNS exfiltration, read a port scan. |
 | 📊 Log Analysis & Detection | 4 | 675 | The blue-team track. Find the one success in a brute force, the 200 among the 404s, impossible travel, and evidence an attacker tried to destroy. |
 | 📧 Phishing & Email Forensics | 4 | 675 | Triage real .eml files: trace Received hops to the true origin, read SPF/DKIM/DMARC, unmask deceptive links, decode attachments safely. |
-| 🏭 OT / ICS Fundamentals | 4 | 950 | Industrial control systems: read Modbus, watch an unauthenticated write open a breaker, pull credentials off Telnet, and apply the SRP triad. |
 
 ## The Challenge Ladder
 Generated from the `CHALLENGES` list in `app.py` — regenerate rather than hand-editing.
@@ -110,14 +109,6 @@ Counts are derived at runtime (`TOTAL_CHALLENGES`, `CATEGORY_ORDER`), so this ta
 |30|When Everything Fails|Email Headers|Reading SPF, DKIM and DMARC results|175|
 |31|Hover Before You Click|Social Engineering|Separating link text from link destination|150|
 |32|Decoding the Attachment|Malware Delivery|Extracting and decoding a MIME attachment safely|200|
-
-### 🏭 OT / ICS Fundamentals
-| # | Title | Category | Skill taught | Pts |
-|---|-------|----------|--------------|-----|
-|33|Reading Modbus|Industrial Protocols|Interpreting Modbus/TCP traffic|200|
-|34|The Coil That Opened a Breaker|Industrial Protocols|Recognising an unauthenticated control-write attack|250|
-|35|Telnet to a PLC|OT Access|Recovering credentials from legacy cleartext protocols|225|
-|36|Safety Outranks Uptime|OT Risk|Applying the SRP triad to an OT change decision|275|
 
 ---
 
@@ -264,7 +255,7 @@ packet captures. `challenge_files/pcapgen.py` is a dependency-free pcap writer
 (classic libpcap format, hand-built Ethernet/IPv4/TCP/UDP with correct checksums,
 plus `TcpStream` for full handshake/data/teardown conversations and `dns_query`).
 **No scapy in the image.** Captures were validated against tshark 4.6.9: HTTP, DNS,
-Telnet and Modbus/TCP all dissect correctly and no checksum is flagged bad.
+and Telnet all dissect correctly and no checksum is flagged bad.
 
 Two artifacts deliberately contain **no plaintext flag** — `dns_traffic.pcap`
 (hex-encoded across subdomain labels) and `phish_04.eml` (base64 attachment) —

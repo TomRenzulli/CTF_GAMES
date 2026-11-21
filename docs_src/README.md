@@ -22,19 +22,17 @@ scale were extracted from `What_is_a_CTF.pdf`:
 ```bash
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 "$CHROME" --headless --disable-gpu --no-pdf-header-footer \
-  --print-to-pdf="../docs/OT_101_From_IT_to_OT.pdf" "file://$PWD/ot101.html"
+  --print-to-pdf="../docs/Getting_Started_with_Wireshark.pdf" "file://$PWD/wireshark.html"
 ```
 
 Repeat for each source:
 
 | Source | Output |
 |---|---|
-| `ot101.html` | `OT_101_From_IT_to_OT.pdf` |
 | `wireshark.html` | `Getting_Started_with_Wireshark.pdf` |
 | `phishing.html` | `Analysts_Guide_to_Phishing_Emails.pdf` |
 | `space.html` | `Space_and_Satellite_Hacking.pdf` |
 | `automotive.html` | `Car_and_Automotive_Hacking.pdf` |
-| `otics_hacking.html` | `OT_ICS_Hacking_Protocols_and_Tools.pdf` |
 
 After rendering, check pagination — Chrome will strand an `<h2>` at the foot of a
 page when the table that follows it is too tall to fit. `style.css` sets

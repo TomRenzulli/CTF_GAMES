@@ -1,5 +1,0 @@
-# SCADA alarm journal — BUS-2 feeder
-2026-11-18T05:13:40Z,INFO,BUS-2,coil[3],state=0,source=hmi-01
-2026-11-18T05:13:58Z,CRITICAL,BUS-2,coil[3],state=1,source=192.168.20.31,note=write_single_coil accepted without authentication
-2026-11-18T05:13:58Z,CRITICAL,BUS-2,breaker,position=OPEN,ack_token=FLAG{coil_forced_breaker_opened}
-2026-11-18T05:14:30Z,WARN,BUS-2,load,shed_kw=1180
