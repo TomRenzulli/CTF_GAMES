@@ -35,6 +35,7 @@ BERACTF/
 │   └── What_is_a_CTF.pdf
 └── challenge_files/
     ├── generate.py           # Generates all static challenge files at Docker build time
+    ├── pcapgen.py            # Dependency-free pcap writer (no scapy) used by generate.py
     ├── signal.txt            # Challenge 2 — hex-encoded flag
     ├── binary_message.txt    # Challenge 3 — binary-encoded flag
     ├── mystery.bin           # Challenge 6 — strings challenge
@@ -45,32 +46,77 @@ BERACTF/
 
 ---
 
+## Tracks
+Challenges are grouped into tracks (`module` on each challenge; `MODULES` defines them).
+`/` is the track picker, `/module/<slug>` is a track's challenge grid.
+
+| Track | Challenges | Points | Focus |
+|-------|-----------:|-------:|-------|
+| 🎓 Foundations | 20 | 2575 | Encoding, recon, file analysis, crypto, web, auth and injection. Builds the vocabulary every other track assumes. |
+| 🌐 Network Traffic Analysis | 4 | 675 | Read real packet captures in Wireshark: harvest cleartext credentials, reassemble TCP streams, decode DNS exfiltration, read a port scan. |
+| 📊 Log Analysis & Detection | 4 | 675 | The blue-team track. Find the one success in a brute force, the 200 among the 404s, impossible travel, and evidence an attacker tried to destroy. |
+| 📧 Phishing & Email Forensics | 4 | 675 | Triage real .eml files: trace Received hops to the true origin, read SPF/DKIM/DMARC, unmask deceptive links, decode attachments safely. |
+| 🏭 OT / ICS Fundamentals | 4 | 950 | Industrial control systems: read Modbus, watch an unauthenticated write open a breaker, pull credentials off Telnet, and apply the SRP triad. |
+
 ## The Challenge Ladder
 Generated from the `CHALLENGES` list in `app.py` — regenerate rather than hand-editing.
 Counts are derived at runtime (`TOTAL_CHALLENGES`, `CATEGORY_ORDER`), so this table is documentation, not configuration.
 
+### 🎓 Foundations
 | # | Title | Category | Skill taught | Pts |
 |---|-------|----------|--------------|-----|
-| 1 | Base64 Basics | Encoding | Decoding Base64 | 50 |
-| 2 | Hex Signals | Encoding | Decoding hexadecimal | 50 |
-| 3 | Binary Message | Encoding | Reading binary / ASCII | 50 |
-| 4 | View Source | Recon | Reading HTML page source | 75 |
-| 5 | HTTP Headers | Recon | Inspecting HTTP response headers | 75 |
-| 6 | Strings Search | File Analysis | Using the `strings` command | 100 |
-| 7 | Wrong Extension | File Analysis | Using the `file` command / magic bytes | 100 |
-| 8 | ROT13 | Crypto | ROT13 / Caesar cipher | 100 |
-| 9 | Caesar Brute Force | Crypto | Brute-forcing Caesar cipher (26 shifts) | 125 |
-| 10 | Cookie Monster | Web | Reading and editing browser cookies | 125 |
-| 11 | URL Parameters | Web | Manipulating URL query parameters | 125 |
-| 12 | robots.txt | Recon | Checking robots.txt for hidden paths | 150 |
-| 13 | Directory Guessing | Recon | Discovering hidden endpoints by guessing | 150 |
-| 14 | Image Metadata | Forensics | Extracting EXIF / metadata from images | 150 |
-| 15 | Magic Bytes | Forensics | Identifying files by magic bytes / file header | 150 |
-| 16 | Default Credentials | Auth | Testing default / common credentials | 175 |
-| 17 | Weak Token | Auth | Predicting / forging weak session tokens | 175 |
-| 18 | Command Injection | Injection | Basic OS command injection via shell metacharacters | 200 |
-| 19 | SQL Injection | Injection | Classic SQL injection (OR 1=1) | 200 |
-| 20 | Final Boss: Chain It | Chain | Multi-step: recon → decode → submit | 250 |
+|1|Base64 Basics|Encoding|Decoding Base64|50|
+|2|Hex Signals|Encoding|Decoding hexadecimal|50|
+|3|Binary Message|Encoding|Reading binary / ASCII|50|
+|4|View Source|Recon|Reading HTML page source|75|
+|5|HTTP Headers|Recon|Inspecting HTTP response headers|75|
+|6|Strings Search|File Analysis|Using the `strings` command|100|
+|7|Wrong Extension|File Analysis|Using the `file` command / magic bytes|100|
+|8|ROT13|Crypto|ROT13 / Caesar cipher|100|
+|9|Caesar Brute Force|Crypto|Brute-forcing Caesar cipher (26 shifts)|125|
+|10|Cookie Monster|Web|Reading and editing browser cookies|125|
+|11|URL Parameters|Web|Manipulating URL query parameters|125|
+|12|robots.txt|Recon|Checking robots.txt for hidden paths|150|
+|13|Directory Guessing|Recon|Discovering hidden endpoints by guessing|150|
+|14|Image Metadata|Forensics|Extracting EXIF / metadata from images|150|
+|15|Magic Bytes|Forensics|Identifying files by magic bytes / file header|150|
+|16|Default Credentials|Auth|Testing default / common credentials|175|
+|17|Weak Token|Auth|Predicting / forging weak session tokens|175|
+|18|Command Injection|Injection|Basic OS command injection via shell metacharacters|200|
+|19|SQL Injection|Injection|Classic SQL injection (OR 1=1)|200|
+|20|Final Boss: Chain It|Chain|Multi-step: recon → decode → submit|250|
+
+### 🌐 Network Traffic Analysis
+| # | Title | Category | Skill taught | Pts |
+|---|-------|----------|--------------|-----|
+|21|Cleartext Credentials|Traffic Analysis|Finding credentials in unencrypted traffic|150|
+|22|Stream Reassembly|Traffic Analysis|Reassembling data split across TCP segments|150|
+|23|DNS Exfiltration|Exfiltration|Spotting and decoding data smuggled through DNS|200|
+|24|Scan Signatures|Network Recon|Recognising a port scan and what the attacker found|175|
+
+### 📊 Log Analysis & Detection
+| # | Title | Category | Skill taught | Pts |
+|---|-------|----------|--------------|-----|
+|25|Brute Force in the Logs|Authentication Logs|Finding the successful login inside a brute-force attack|150|
+|26|Reading Status Codes|Web Logs|Finding the request that worked in a web access log|150|
+|27|Impossible Travel|Authentication Logs|Detecting account compromise from session geography|175|
+|28|The Log That Remembers|Anti-Forensics|Recovering evidence an attacker tried to destroy|200|
+
+### 📧 Phishing & Email Forensics
+| # | Title | Category | Skill taught | Pts |
+|---|-------|----------|--------------|-----|
+|29|Following the Hops|Email Headers|Tracing an email's true origin through Received headers|150|
+|30|When Everything Fails|Email Headers|Reading SPF, DKIM and DMARC results|175|
+|31|Hover Before You Click|Social Engineering|Separating link text from link destination|150|
+|32|Decoding the Attachment|Malware Delivery|Extracting and decoding a MIME attachment safely|200|
+
+### 🏭 OT / ICS Fundamentals
+| # | Title | Category | Skill taught | Pts |
+|---|-------|----------|--------------|-----|
+|33|Reading Modbus|Industrial Protocols|Interpreting Modbus/TCP traffic|200|
+|34|The Coil That Opened a Breaker|Industrial Protocols|Recognising an unauthenticated control-write attack|250|
+|35|Telnet to a PLC|OT Access|Recovering credentials from legacy cleartext protocols|225|
+|36|Safety Outranks Uptime|OT Risk|Applying the SRP triad to an OT change decision|275|
 
 ---
 
@@ -186,6 +232,36 @@ Notes auto-expand. Solving used to display only a point total.
 `DOC_LINKS[id]` lists PDF filenames from `docs/`. `_prepare_challenges()` resolves
 them against `DOCS_DIR` at import and drops any that don't exist, so renaming a PDF
 removes the link instead of producing a dead one.
+
+### Tracks / modules
+`MODULES` is the ordered track list (slug, name, icon, level, blurb); `MODULE_BY_SLUG`
+indexes it. Every challenge carries `module`, and `_prepare_challenges()` defaults
+anything missing one to `DEFAULT_MODULE` (`"foundations"`), so the original 20 needed
+no edits. `module_progress()` builds the index's per-track counts/points/percent and
+`module_neighbours()` gives prev/next **within a track** — challenge navigation no
+longer assumes `id ± 1`.
+
+Routes: `/` is the track picker (`INDEX_PAGE`), `/module/<slug>` is one track's grid
+(`MODULE_PAGE`, which is the old index page). An unknown slug redirects to `/`.
+
+**Adding a track:** append to `MODULES`, set `module` on the new challenges. The
+category rows inside a track are derived from that track's challenges only.
+
+### Challenge artifacts
+`challenge_files/generate.py` builds every artifact at Docker build time, including
+packet captures. `challenge_files/pcapgen.py` is a dependency-free pcap writer
+(classic libpcap format, hand-built Ethernet/IPv4/TCP/UDP with correct checksums,
+plus `TcpStream` for full handshake/data/teardown conversations and `dns_query`).
+**No scapy in the image.** Captures were validated against tshark 4.6.9: HTTP, DNS,
+Telnet and Modbus/TCP all dissect correctly and no checksum is flagged bad.
+
+Two artifacts deliberately contain **no plaintext flag** — `dns_traffic.pcap`
+(hex-encoded across subdomain labels) and `phish_04.eml` (base64 attachment) —
+because decoding is the skill being taught. Don't "fix" them by embedding the flag.
+
+`/files/<name>` serves these from `FILES_DIR`, resolved relative to `app.py`
+(it was hardcoded to `/app/challenge_files`, which broke every download outside
+Docker).
 
 ### Shared header (`SITE_HEADER`)
 One header definition for all pages. `header_ctx(active, show_stats=True)` supplies

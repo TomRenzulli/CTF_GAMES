@@ -1,0 +1,15 @@
+# plant-vpn session log — generated 2026-11-18T06:00:00Z
+# fields: timestamp,user,src_ip,geo,action,session
+2026-11-18T05:02:11Z,j.harlow,198.51.100.24,US-NY,connect,s-41a7
+2026-11-18T05:02:12Z,j.harlow,198.51.100.24,US-NY,auth-ok,s-41a7
+2026-11-18T05:19:40Z,m.okafor,198.51.100.77,US-NY,connect,s-41b2
+2026-11-18T05:19:41Z,m.okafor,198.51.100.77,US-NY,auth-ok,s-41b2
+2026-11-18T05:31:02Z,d.lindqvist,198.51.100.91,US-NJ,connect,s-41c0
+2026-11-18T05:31:03Z,d.lindqvist,198.51.100.91,US-NJ,auth-ok,s-41c0
+2026-11-18T05:44:55Z,s.varga,198.51.100.12,US-NY,connect,s-41c9
+2026-11-18T05:44:56Z,s.varga,198.51.100.12,US-NY,auth-ok,s-41c9
+2026-11-18T05:51:03Z,m.okafor,198.51.100.77,US-NY,auth-ok,s-41b2
+2026-11-18T05:51:51Z,m.okafor,91.219.238.14,RU-MOW,auth-ok,s-41d4
+2026-11-18T05:51:52Z,m.okafor,91.219.238.14,RU-MOW,note=FLAG{two_countries_one_minute},s-41d4
+2026-11-18T05:52:10Z,m.okafor,91.219.238.14,RU-MOW,privesc-request,s-41d4
+2026-11-18T05:58:00Z,j.harlow,198.51.100.24,US-NY,disconnect,s-41a7

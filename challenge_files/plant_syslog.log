@@ -1,0 +1,5 @@
+Nov 18 05:40:01 plc-jump systemd[1]: Started Rotate log files.
+Nov 18 06:00:00 plc-jump rsyslogd: [origin software="rsyslogd"] rsyslogd was HUPed
+Nov 18 06:00:02 plc-jump kernel: audit: backlog limit exceeded
+Nov 18 06:00:05 plc-jump auditd[812]: Audit daemon rotating log files
+# NOTE: entries before 06:00 are not in this file. Check the rotated copy.

@@ -405,8 +405,363 @@ CHALLENGES = [
     },
 ]
 
+
+# ── Modules 2-5: Network, Logs, Phishing, OT ─────────────────────────────────
+# Each challenge works on a real artifact generated at build time by
+# challenge_files/generate.py and served from /files/<name>.
+CHALLENGES += [
+    # ═══ Network Traffic Analysis ═══════════════════════════════════════════
+    {
+        "id": 21, "title": "21 · Cleartext Credentials",
+        "category": "Traffic Analysis", "module": "network",
+        "skill": "Finding credentials in unencrypted traffic",
+        "story": "An operator logged into the plant HMI portal over plain HTTP. "
+                 "You have the packet capture.<br><br>"
+                 "Download <a href='/files/portal_capture.pcap'>portal_capture.pcap</a> and open it in "
+                 "Wireshark (or use <code>tshark</code>). Two separate TCP conversations are in there. "
+                 "One of them carries the operator's password in the clear.<br><br>"
+                 "The password <i>is</i> the flag.",
+        "flag": "FLAG{cleartext_http_leaks_creds}",
+        "points": 150,
+        "notes": [
+            ("Why HTTP is fatal here", "HTTP has no transport encryption, so every field of every form — usernames, passwords, session cookies, API keys — travels as readable ASCII. Anyone on the path (a switch SPAN port, a compromised router, a laptop on the same Wi-Fi) reads it without any decryption at all."),
+            ("Where to look first", "Filter for <code>http.request.method == \"POST\"</code>. GET requests put parameters in the URL; POSTs put them in the body. Login forms are almost always POSTs, so that one filter cuts a large capture down to the interesting packets instantly."),
+            ("Real-world context", "This is still routinely found on internal networks, especially on OT and building-management kit whose web interfaces predate TLS being free. Internal does not mean private: an attacker's first move after gaining a foothold is to capture traffic and harvest exactly this."),
+            ("Key tools", "Wireshark &rarr; <i>File &gt; Open</i>, then <b>Follow &gt; HTTP Stream</b> &nbsp;·&nbsp; <code>tshark -r file.pcap -Y 'http.request.method==\"POST\"'</code> &nbsp;·&nbsp; <code>tcpdump -A -r file.pcap</code> &nbsp;·&nbsp; the <code>credslayer</code> and <code>PCredz</code> tools automate this"),
+        ],
+    },
+    {
+        "id": 22, "title": "22 · Stream Reassembly",
+        "category": "Traffic Analysis", "module": "network",
+        "skill": "Reassembling data split across TCP segments",
+        "story": "A maintenance relay handed a key to a client, but the server sent it a few bytes at a "
+                 "time. Searching individual packets for it will fail — no single packet contains the "
+                 "whole string.<br><br>"
+                 "Download <a href='/files/relay_session.pcap'>relay_session.pcap</a>. You need TCP to "
+                 "reassemble the conversation before you can read it.",
+        "flag": "FLAG{follow_the_whole_stream}",
+        "points": 150,
+        "notes": [
+            ("Why packets aren't messages", "TCP is a byte stream, not a message protocol. The sender writes bytes; the stack splits them into segments wherever it likes, based on MSS, Nagle's algorithm and timing. A single application-level string can be spread across any number of packets — so grepping packets is not the same as reading data."),
+            ("Reassembly is the whole point", "Wireshark's <b>Follow TCP Stream</b> sorts segments by sequence number, drops retransmissions and concatenates the payloads, giving you what the application actually saw. This is why an analyst follows streams instead of reading the packet list."),
+            ("Real-world context", "Attackers rely on this gap deliberately. Splitting a payload or a command across segments defeats naive signature matching that inspects one packet at a time — which is precisely why real IDS engines perform stream reassembly before matching."),
+            ("Key tools", "Wireshark &rarr; right-click a packet &rarr; <b>Follow &gt; TCP Stream</b> &nbsp;·&nbsp; <code>tshark -r file.pcap -qz follow,tcp,ascii,0</code> &nbsp;·&nbsp; <code>tcpflow</code> writes each direction of each stream to its own file"),
+        ],
+    },
+    {
+        "id": 23, "title": "23 · DNS Exfiltration",
+        "category": "Exfiltration", "module": "network",
+        "skill": "Spotting and decoding data smuggled through DNS",
+        "story": "A workstation on the plant network made a burst of odd DNS lookups to a domain nobody "
+                 "recognises. The queries never resolve to anything useful — the <i>names themselves</i> "
+                 "are the message.<br><br>"
+                 "Download <a href='/files/dns_traffic.pcap'>dns_traffic.pcap</a>. Most of the lookups are "
+                 "ordinary plant hostnames. A handful are not. Pull out the suspicious subdomain labels, "
+                 "put them back in order, and decode them.",
+        "flag": "FLAG{dns_is_an_exfil_channel}",
+        "points": 200,
+        "notes": [
+            ("Why DNS is the favourite channel", "DNS is almost never blocked outbound, is rarely inspected as deeply as HTTP, and every host is expected to make constant queries. A client that cannot reach the internet directly can still usually get a name resolved — and a resolved name means an attacker-controlled server received whatever was in it."),
+            ("What the pattern looks like", "Long random-looking labels, high query volume to one domain, unique names every single time (so nothing ever hits cache), and queries with no matching user activity. Here the data is hex-encoded in the leftmost label and the next label is a sequence counter — the counter exists because UDP can reorder, so the receiver needs to reassemble."),
+            ("Real-world context", "This is a standard C2 and exfiltration technique: <code>iodine</code> and <code>dnscat2</code> build full tunnels this way, and it was how the SolarWinds implant beaconed. Defenders hunt it with entropy scoring on query names, counts of unique subdomains per domain, and query-length baselines."),
+            ("Key tools", "<code>tshark -r file.pcap -T fields -e dns.qry.name</code> &nbsp;·&nbsp; Wireshark &rarr; <i>Statistics &gt; DNS</i> &nbsp;·&nbsp; <code>xxd -r -p</code> to un-hex &nbsp;·&nbsp; CyberChef &rarr; 'From Hex'"),
+        ],
+    },
+    {
+        "id": 24, "title": "24 · Scan Signatures",
+        "category": "Network Recon", "module": "network",
+        "skill": "Recognising a port scan and what the attacker found",
+        "story": "The IDS flagged a host as 'scanning'. Confirm it from the capture, then work out what the "
+                 "attacker got.<br><br>"
+                 "Download <a href='/files/scan_capture.pcap'>scan_capture.pcap</a>. One host sprays SYNs "
+                 "across a list of ports; almost all are refused. Find the one port that <i>accepted</i> "
+                 "the connection — the attacker came back to it, and the service introduced itself.",
+        "flag": "FLAG{banner_grab_after_the_scan}",
+        "points": 175,
+        "notes": [
+            ("How a SYN scan looks on the wire", "The scanner sends a SYN to each port and never completes the handshake. A <b>RST/ACK</b> back means closed; a <b>SYN/ACK</b> means open. One source IP, one destination, many destination ports, in rapid succession, with no data transferred is the signature — and it's why this is also called a half-open scan."),
+            ("Open ports are the lead, banners are the prize", "Knowing a port is open is worth little; knowing <i>what is listening</i> is worth a lot. Many services announce their name and version on connect. That banner tells an attacker exactly which exploit to reach for, which is why banner grabbing immediately follows a scan."),
+            ("Real-world context", "Everything internet-facing is scanned continuously — Shodan and Censys scan the whole IPv4 space on a schedule. On an internal network a scan is a much stronger signal: legitimate hosts don't enumerate their neighbours' ports, so this is often the first observable step of an intrusion."),
+            ("Key tools", "<code>tshark -r f.pcap -Y 'tcp.flags.syn==1 &amp;&amp; tcp.flags.ack==1'</code> finds open ports &nbsp;·&nbsp; Wireshark &rarr; <i>Statistics &gt; Conversations</i> &nbsp;·&nbsp; <code>nmap -sS</code> generates this pattern &nbsp;·&nbsp; <code>nc</code> or <code>telnet</code> to grab a banner by hand"),
+        ],
+    },
+
+    # ═══ Log Analysis & Detection ═══════════════════════════════════════════
+    {
+        "id": 25, "title": "25 · Brute Force in the Logs",
+        "category": "Authentication Logs", "module": "logs",
+        "skill": "Finding the successful login inside a brute-force attack",
+        "story": "A jump host was hammered with SSH login attempts overnight. Most failed. "
+                 "<b>One did not.</b><br><br>"
+                 "Download <a href='/files/auth.log'>auth.log</a>. Find the account the attacker "
+                 "successfully logged into, then read the session marker logged right after it.<br><br>"
+                 "The hard part isn't the volume — it's that the success looks exactly like the failures "
+                 "unless you filter for it.",
+        "flag": "FLAG{one_success_among_the_failures}",
+        "points": 150,
+        "notes": [
+            ("Failures are noise, the success is the incident", "A hundred failed logins is an attack <i>attempt</i>, and on its own it is routine background noise on anything reachable. A single <code>Accepted password</code> from the same source turns it into a <b>breach</b>. Triage means finding the state change, not counting the noise."),
+            ("How to cut it down", "Separate by outcome and by source. <code>grep 'Failed password'</code> establishes the attack and its source IP; <code>grep 'Accepted'</code> for that same IP finds the compromise. Then pivot: once you have the account, every later log line mentioning it is in scope."),
+            ("Real-world context", "This is the classic SSH story for any host with password auth on a public IP. The defences are well understood and cheap: key-only authentication, <code>fail2ban</code>, rate limiting, and alerting specifically on <i>success following repeated failure</i> — which is the detection rule this challenge teaches."),
+            ("Key tools", "<code>grep</code>, <code>awk</code>, <code>sort | uniq -c | sort -rn</code> to rank source IPs &nbsp;·&nbsp; <code>lnav</code> for interactive log browsing &nbsp;·&nbsp; in a SIEM this is a correlation rule: N failures then 1 success from one source"),
+        ],
+    },
+    {
+        "id": 26, "title": "26 · Reading Status Codes",
+        "category": "Web Logs", "module": "logs",
+        "skill": "Finding the request that worked in a web access log",
+        "story": "Someone ran a directory scanner against the plant portal. Almost every request got a "
+                 "<code>404</code> — but not every one.<br><br>"
+                 "Download <a href='/files/access.log'>access.log</a>. Find the scanner's single "
+                 "<code>200</code> response. That one request found something it shouldn't have, and the "
+                 "flag is in it.",
+        "flag": "FLAG{read_the_status_codes}",
+        "points": 150,
+        "notes": [
+            ("The status code is the verdict", "In a scan log the path tells you what was <i>tried</i>; the status code tells you what <i>exists</i>. Hundreds of 404s are a scanner finding nothing. A 200 among them is a real file — and a 403 is arguably more interesting still, because it means the path exists but is protected."),
+            ("Reading the combined log format", "Fields are: client IP, identd, user, timestamp, request line, <b>status</b>, bytes, referrer, user-agent. The status is field 9 in <code>awk</code> terms, which makes <code>awk '$9==200'</code> the whole trick. The user-agent is your other lead — real scanners rarely bother to disguise it."),
+            ("Real-world context", "Every public web server sees this traffic constantly. The job is separating background scanning from a scan that <i>succeeded</i>. Backup files, <code>.git</code> directories, <code>.env</code> files and stale admin panels are the usual finds, and each one leaks credentials or source code."),
+            ("Key tools", "<code>awk '$9==200' access.log</code> &nbsp;·&nbsp; <code>awk '{print $9}' access.log | sort | uniq -c</code> for a status breakdown &nbsp;·&nbsp; <code>goaccess</code> for a live report &nbsp;·&nbsp; <code>gobuster</code>/<code>ffuf</code> are what generate this pattern"),
+        ],
+    },
+    {
+        "id": 27, "title": "27 · Impossible Travel",
+        "category": "Authentication Logs", "module": "logs",
+        "skill": "Detecting account compromise from session geography",
+        "story": "A VPN session log looks normal at a glance — everyone connecting from the usual places. "
+                 "But one account authenticated from two locations that no human could travel between in "
+                 "the time available.<br><br>"
+                 "Download <a href='/files/vpn_sessions.log'>vpn_sessions.log</a>, find that account, and "
+                 "read the note logged on its anomalous session.",
+        "flag": "FLAG{two_countries_one_minute}",
+        "points": 175,
+        "notes": [
+            ("Why this detection works", "Credentials can be stolen and replayed from anywhere, but a person occupies one place at a time. Two successful authentications for one identity, far enough apart that the travel is physically impossible in the elapsed time, means more than one party is using that identity. It needs no malware signature and no payload — just geometry."),
+            ("What to compute", "Group by user, then look for a geo or ASN change between consecutive successful authentications and divide distance by elapsed time. Here one account appears in two countries 48 seconds apart. Watch for the benign explanations too: VPNs, mobile carrier CGNAT, and cloud-hosted mail clients all produce false positives."),
+            ("Real-world context", "'Impossible travel' is a built-in detection in Entra ID Identity Protection, Okta ThreatInsight and most SIEMs, and it is one of the highest-fidelity signals available for credential theft. It is also why the follow-on action matters: note the privilege-escalation request logged moments later."),
+            ("Key tools", "<code>awk -F, '{print $2, $4}' | sort -u</code> to find accounts with more than one geo &nbsp;·&nbsp; MaxMind GeoIP for IP&rarr;location &nbsp;·&nbsp; in a SIEM: a geo-velocity or 'atypical travel' rule"),
+        ],
+    },
+    {
+        "id": 28, "title": "28 · The Log That Remembers",
+        "category": "Anti-Forensics", "module": "logs",
+        "skill": "Recovering evidence an attacker tried to destroy",
+        "story": "An attacker cleared the audit trail on their way out. The live log starts suspiciously "
+                 "late and the interesting hours are simply gone.<br><br>"
+                 "But logs rotate. Download both <a href='/files/plant_syslog.log'>plant_syslog.log</a> and "
+                 "<a href='/files/plant_syslog.log.1'>plant_syslog.log.1</a>. What was wiped from the live "
+                 "file is still sitting in the rotated copy, including the marker written just before the "
+                 "clear.",
+        "flag": "FLAG{rotated_logs_remember}",
+        "points": 200,
+        "notes": [
+            ("Clearing logs is itself evidence", "An empty or truncated log is not the absence of an incident — it <i>is</i> the incident. A gap where there should be entries, a timestamp sequence that jumps, or an audit daemon reporting its own rotation are all signals. Attackers clear logs precisely because logs are the record, which makes the clearing the loudest thing they do."),
+            ("Why copies survive", "Log data exists in more places than the file being tailed: rotated and compressed archives (<code>.log.1</code>, <code>.gz</code>), the systemd journal, a remote syslog collector, SIEM ingestion, and unlinked file handles still held by a running process. Destroying one copy rarely destroys them all — which is the entire argument for shipping logs off-host in real time."),
+            ("Real-world context", "Clearing the Windows Event Log is MITRE ATT&CK T1070.001 — <i>Indicator Removal</i>. Mature environments forward logs to a write-only collector the moment they're written, so an attacker with root on the host still cannot reach the authoritative copy. That design decision is what turns this technique from effective into noisy."),
+            ("Key tools", "<code>ls -la /var/log/</code> to spot rotated files &nbsp;·&nbsp; <code>zgrep</code> to search compressed archives &nbsp;·&nbsp; <code>journalctl --verify</code> &nbsp;·&nbsp; <code>lsof +L1</code> finds deleted-but-open files &nbsp;·&nbsp; filesystem timeline tools (<code>fls</code>, <code>mactime</code>)"),
+        ],
+    },
+
+    # ═══ Phishing & Email Forensics ═════════════════════════════════════════
+    {
+        "id": 29, "title": "29 · Following the Hops",
+        "category": "Email Headers", "module": "phishing",
+        "skill": "Tracing an email's true origin through Received headers",
+        "story": "A convincing 'IT Helpdesk' email asks an operator to renew a VPN certificate. The "
+                 "<code>From:</code> address looks plausible. The <code>Received:</code> headers tell a "
+                 "different story.<br><br>"
+                 "Download <a href='/files/phish_01.eml'>phish_01.eml</a> and read the hop chain from the "
+                 "bottom up to find where the message really entered. That originating relay added a note "
+                 "of its own.",
+        "flag": "FLAG{received_headers_dont_lie}",
+        "points": 150,
+        "notes": [
+            ("Read Received headers bottom-up", "Each mail server <i>prepends</i> its own <code>Received:</code> line, so the stack reads newest-at-the-top. The <b>bottom-most</b> Received header is the earliest hop — the closest thing you have to the true origin. Working upward traces the delivery path hop by hop."),
+            ("What can and cannot be trusted", "<code>From:</code>, <code>Reply-To:</code> and the display name are free text the sender chooses — they prove nothing. Received headers added by <i>your own</i> infrastructure are trustworthy; ones added before the message reached you can be forged. So trust narrows as you read downward, and the handoff into your own perimeter is the key line."),
+            ("Real-world context", "This is the first step of nearly every phishing triage. Mismatches between the claimed sender domain and the originating infrastructure, a <code>Message-ID</code> whose domain doesn't match the From, and a sending country inconsistent with the supposed sender are all standard findings in a real report."),
+            ("Key tools", "Any mail client's 'Show Original' / 'View Source' &nbsp;·&nbsp; Google's Message Header Analyzer &nbsp;·&nbsp; MXToolbox Header Analyzer &nbsp;·&nbsp; <code>python3 -c 'import email; ...'</code> &nbsp;·&nbsp; <code>grep -i '^received'</code>"),
+        ],
+    },
+    {
+        "id": 30, "title": "30 · When Everything Fails",
+        "category": "Email Headers", "module": "phishing",
+        "skill": "Reading SPF, DKIM and DMARC results",
+        "story": "A 'Payroll Services' email claims to come from <code>bnl.gov</code> and wants a direct "
+                 "deposit form signed. The receiving mail server already checked whether that claim is "
+                 "true, and wrote the answer in the headers.<br><br>"
+                 "Download <a href='/files/phish_02.eml'>phish_02.eml</a> and read the "
+                 "<code>Authentication-Results</code> header. All three checks failed — and the auditing "
+                 "note alongside them is the flag.",
+        "flag": "FLAG{spf_dkim_dmarc_all_failed}",
+        "points": 175,
+        "notes": [
+            ("What the three checks actually do", "<b>SPF</b> asks whether the sending IP is authorised to send for the envelope domain. <b>DKIM</b> verifies a cryptographic signature over the message, proving it wasn't altered and really came from the signing domain. <b>DMARC</b> ties them together: it requires SPF or DKIM to pass <i>and align</i> with the visible <code>From:</code> domain, and publishes what to do on failure."),
+            ("Why alignment is the crux", "An attacker can trivially pass SPF for a domain they own — <code>evil.com</code> can publish any SPF record it likes. What they cannot do is pass an <i>aligned</i> check for <code>bnl.gov</code> without controlling its DNS or signing key. That is why <code>dmarc=fail</code> on a message claiming a real organisation is close to conclusive."),
+            ("Real-world context", "A <code>p=reject</code> DMARC policy means the owner has explicitly asked receivers to refuse failures — so a failing message that still landed in a mailbox points at a gap in the receiving side's enforcement. Treating these headers as the first filter is what keeps domain-spoofed phishing out of inboxes at scale."),
+            ("Key tools", "<code>grep -iA5 'authentication-results'</code> &nbsp;·&nbsp; <code>dig TXT _dmarc.domain.com</code> and <code>dig TXT domain.com</code> to read the published policy &nbsp;·&nbsp; MXToolbox SPF/DMARC checkers &nbsp;·&nbsp; DMARC aggregate (RUA) reports"),
+        ],
+    },
+    {
+        "id": 31, "title": "31 · Hover Before You Click",
+        "category": "Social Engineering", "module": "phishing",
+        "skill": "Separating link text from link destination",
+        "story": "A 'Microsoft 365' notice says three messages are in quarantine. It even shows a genuine "
+                 "<code>login.microsoftonline.com</code> URL as reassurance.<br><br>"
+                 "Download <a href='/files/phish_03.eml'>phish_03.eml</a> and look at the raw HTML. One "
+                 "link displays one thing and points somewhere else entirely. The real destination carries "
+                 "the flag.",
+        "flag": "FLAG{hover_before_you_click}",
+        "points": 150,
+        "notes": [
+            ("Anchor text is not the destination", "In HTML, <code>&lt;a href=\"X\"&gt;Y&lt;/a&gt;</code> displays <b>Y</b> but navigates to <b>X</b>. Nothing requires them to match, so a link can display a perfect real URL and lead anywhere. This is the single most-used deception in phishing because it defeats 'just look at the link' advice."),
+            ("The decoy pattern", "Note the structure here: one <i>genuine</i> Microsoft link is included alongside the malicious one. Real links raise the message's credibility and help it past reputation filters, while the payload hides behind innocuous display text like 'Review messages'. Always enumerate <i>every</i> href, not just the obvious one."),
+            ("Real-world context", "The same trick extends to homoglyph domains (<code>micr0soft.com</code>, Cyrillic lookalikes), deeply nested subdomains that push the real domain off the end of a mobile address bar, open redirects on legitimate sites, and URL shorteners. Checking the <i>registrable</i> domain — the last two labels before the TLD — is the habit that survives all of them."),
+            ("Key tools", "Hover and read the status bar; long-press on mobile &nbsp;·&nbsp; <code>grep -o 'href=\"[^\"]*\"'</code> on the raw source &nbsp;·&nbsp; VirusTotal and urlscan.io for safe detonation &nbsp;·&nbsp; CyberChef 'Defang URL' before sharing an IOC"),
+        ],
+    },
+    {
+        "id": 32, "title": "32 · Decoding the Attachment",
+        "category": "Malware Delivery", "module": "phishing",
+        "skill": "Extracting and decoding a MIME attachment safely",
+        "story": "An 'overdue invoice' email carries an attachment. Note the filename carefully — it ends in "
+                 "<code>.pdf.bat</code>, which is not a PDF at all.<br><br>"
+                 "Download <a href='/files/phish_04.eml'>phish_04.eml</a>. The attachment is base64-encoded "
+                 "inside the message. Decode it <b>without running it</b> and read the marker in the script.",
+        "flag": "FLAG{attachments_decode_to_payloads}",
+        "points": 200,
+        "notes": [
+            ("How MIME carries files", "Email is 7-bit ASCII by design, so binaries are base64-encoded into a <code>multipart/mixed</code> body with boundary markers between parts. An attachment is therefore just text in the message source — which means you can extract and inspect it with no risk of execution, as long as you decode rather than open."),
+            ("The double extension", "Windows hides known extensions by default, so <code>invoice_8871.pdf.bat</code> displays as <code>invoice_8871.pdf</code> with a PDF-looking icon. The user believes they are opening a document and instead run a batch script. The same trick appears with <code>.pdf.exe</code>, <code>.doc.js</code>, <code>.xlsx.lnk</code>, and with right-to-left override characters to reverse the visible extension."),
+            ("Real-world context", "Analysts detonate attachments only in isolated sandboxes; static extraction first is the standard discipline. Here the payload is a stub invoking <code>powershell -nop -w hidden -enc</code> — hidden-window, encoded-command PowerShell is one of the most reliable malicious indicators on Windows, and the reason script-block logging exists."),
+            ("Key tools", "<code>python3 -c 'import email; ...'</code> or the <code>email</code> module's <code>walk()</code> &nbsp;·&nbsp; <code>munpack</code> &nbsp;·&nbsp; <code>base64 -d</code> &nbsp;·&nbsp; <code>oletools</code> (<code>olevba</code>) for Office macros &nbsp;·&nbsp; <b>never</b> double-click; use a VM with no network"),
+        ],
+    },
+
+    # ═══ OT / ICS Fundamentals ══════════════════════════════════════════════
+    {
+        "id": 33, "title": "33 · Reading Modbus",
+        "category": "Industrial Protocols", "module": "ot",
+        "skill": "Interpreting Modbus/TCP traffic",
+        "story": "This is an HMI polling a PLC — the most ordinary traffic in a plant. Your job is to learn "
+                 "to read it.<br><br>"
+                 "Download <a href='/files/modbus_poll.pcap'>modbus_poll.pcap</a>. Most of it is a repeated "
+                 "<i>Read Holding Registers</i> loop. One exchange is different: a device-identification "
+                 "request whose response carries a string. That string is the flag.<br><br>"
+                 "Notice what you <b>don't</b> see anywhere in this capture: any authentication at all.",
+        "flag": "FLAG{modbus_has_no_authentication}",
+        "points": 200,
+        "notes": [
+            ("How Modbus/TCP is framed", "A 7-byte MBAP header (transaction ID, protocol ID, length, unit ID) followed by a PDU: one function code plus its data. Function <code>0x03</code> reads holding registers, <code>0x01</code> reads coils, <code>0x05</code> writes a single coil, <code>0x06</code> writes a single register. Wireshark dissects TCP port 502 automatically, so the function codes are readable without any manual decoding."),
+            ("Designed in 1979, with no security", "Modbus has no authentication, no authorisation, no encryption and no integrity checking. Any host that can reach port 502 can issue any command, and the PLC will carry it out — not because it is misconfigured, but because the protocol has no concept of a credential. Security has to come entirely from the network around it."),
+            ("Real-world context", "Modbus still runs an enormous amount of industrial plant, power distribution and building management. You cannot patch the protocol, so defence is architectural: segmentation into Purdue-model zones, a conduit through a firewall or data diode, strict allow-lists of which hosts may talk to which PLCs, and passive monitoring that alerts on any unexpected function code."),
+            ("Key tools", "Wireshark's <code>modbus</code> dissector &nbsp;·&nbsp; <code>tshark -Y 'modbus'</code> &nbsp;·&nbsp; <code>-e modbus.func_code -e modbus.reference_num</code> as fields &nbsp;·&nbsp; the <code>pymodbus</code> library &nbsp;·&nbsp; <code>plcscan</code>, and Nmap's <code>modbus-discover</code> script"),
+        ],
+    },
+    {
+        "id": 34, "title": "34 · The Coil That Opened a Breaker",
+        "category": "Industrial Protocols", "module": "ot",
+        "skill": "Recognising an unauthenticated control-write attack",
+        "story": "At 05:13 a breaker on BUS-2 opened and 1,180 kW of load was shed. No operator touched it."
+                 "<br><br>"
+                 "Download <a href='/files/modbus_write.pcap'>modbus_write.pcap</a> and "
+                 "<a href='/files/breaker_alarm.log'>breaker_alarm.log</a>. An external address wrote "
+                 "directly to a coil and the PLC simply obeyed. Correlate the write in the capture with the "
+                 "alarm journal and read the acknowledgement token.",
+        "flag": "FLAG{coil_forced_breaker_opened}",
+        "points": 250,
+        "notes": [
+            ("Read is reconnaissance, write is impact", "The attacker reads coils first to learn the current state, then issues <b>Write Single Coil</b> (function <code>0x05</code>, value <code>0xFF00</code> for ON) and re-reads to confirm the change took effect. That read-write-verify pattern is the signature of someone manipulating a process rather than merely observing it — and it is the point at which a network intrusion becomes a physical event."),
+            ("Why correlation matters", "The capture proves a command was sent; the alarm journal proves the plant <i>moved</i>. Neither alone is the whole story — an IT analyst sees a packet, an operator sees a breaker trip. Incident response in OT only works when both timelines are laid side by side, which is why timestamp discipline across IT and OT systems is a prerequisite."),
+            ("Real-world context", "This is the mechanism behind the 2015 and 2016 Ukrainian grid attacks, where attackers operated breakers through legitimate control protocols. No exploit and no malware on the PLC were required — only reachability. That is why 'can this host reach port 502?' is the single most important question in an OT network review."),
+            ("Key tools", "<code>tshark -Y 'modbus.func_code==5'</code> isolates coil writes &nbsp;·&nbsp; Wireshark &rarr; <i>Statistics &gt; Conversations</i> to spot an unexpected peer &nbsp;·&nbsp; Zeek with industrial protocol parsers &nbsp;·&nbsp; passive OT monitoring (Nozomi, Claroty, Dragos) alerts on first-seen write commands"),
+        ],
+    },
+    {
+        "id": 35, "title": "35 · Telnet to a PLC",
+        "category": "OT Access", "module": "ot",
+        "skill": "Recovering credentials from legacy cleartext protocols",
+        "story": "A PLC gateway still exposes Telnet. Someone logged into it from an external address, and "
+                 "the whole session — username, password, everything after — crossed the network in the "
+                 "clear.<br><br>"
+                 "Download <a href='/files/plc_telnet.pcap'>plc_telnet.pcap</a>. Telnet sends each keystroke "
+                 "in its own packet, so you will need to reassemble the conversation. The session key the "
+                 "gateway issued on success is the flag.",
+        "flag": "FLAG{telnet_to_a_plc_in_2026}",
+        "points": 225,
+        "notes": [
+            ("Telnet is a plaintext terminal", "Telnet predates any notion of transport security: every keystroke and every byte of output travels unencrypted. Because it sends character-by-character rather than line-by-line, a password appears as a column of one-byte packets — invisible to a per-packet grep, obvious the moment you reassemble the stream."),
+            ("Why it is still running", "A PLC or gateway may have a 20-year service life, a vendor that no longer exists, and a maintenance window measured in minutes per year. 'Just turn Telnet off' can mean a firmware upgrade that voids certification or a process shutdown — so the honest mitigation is usually compensating controls: a jump host, strict allow-lists, and monitoring for any connection to port 23."),
+            ("Real-world context", "Shodan returns large numbers of internet-exposed industrial devices speaking Telnet, FTP and SNMPv1. The same reassembly technique recovers FTP and POP3 credentials, SNMP community strings, and unencrypted HTTP basic-auth headers. Finding one of these on an internal network is a finding in its own right, before anyone exploits it."),
+            ("Key tools", "Wireshark &rarr; <b>Follow &gt; TCP Stream</b> &nbsp;·&nbsp; <code>tshark -qz follow,tcp,ascii,0</code> &nbsp;·&nbsp; the <code>telnet</code> dissector reassembles keystrokes &nbsp;·&nbsp; <code>nmap -p23 --script telnet-encryption</code> &nbsp;·&nbsp; replace with SSH, or front it with a bastion"),
+        ],
+    },
+    {
+        "id": 36, "title": "36 · Safety Outranks Uptime",
+        "category": "OT Risk", "module": "ot",
+        "skill": "Applying the SRP triad to an OT change decision",
+        "story": "IT security optimises for <b>confidentiality first</b>. OT does not. In a plant the "
+                 "ordering is <b>Safety &rarr; Reliability &rarr; Performance</b> — the SRP triad — because "
+                 "the worst outcome here isn't a data breach, it's someone getting hurt.<br><br>"
+                 "Download <a href='/files/hmi_station.conf'>hmi_station.conf</a>. Read the change-control "
+                 "and interlock sections, and note how many findings this one file contains "
+                 "(<code>auth = none</code>, <code>allow_from = 0.0.0.0/0</code>, never patched). The "
+                 "<code>srp_precedence</code> value states the ordering — that's the flag.",
+        "flag": "FLAG{safety_outranks_uptime}",
+        "points": 275,
+        "notes": [
+            ("Why the triad inverts in OT", "IT protects information: confidentiality, integrity, availability. OT protects a physical process, where availability and integrity come first because the failure mode is a release, a fire or an injury — not a disclosure. Taking a running plant offline 'to be safe' can itself be the unsafe action, which is why patching habits that are obvious in IT are genuinely wrong here."),
+            ("Interlocks are not obstacles", "An interlock exists to make a dangerous state physically unreachable. Bypassing an overpressure trip to hit a production target trades <b>Safety</b> for <b>Performance</b> — an inversion of the ordering, and never a decision an individual operator is authorised to make. Hence <code>bypass_requires = two-person authorization</code>: the control is procedural because the consequence is physical."),
+            ("Reading this file as an assessor", "Four findings sit in plain sight: <code>auth = none</code> on a writable control protocol, <code>allow_from = 0.0.0.0/0</code> so any plant host may command it, <code>patch_window = none</code>, and an unauthenticated write path to equipment with real-world effects. Note that the first is a property of Modbus itself — the <i>fixable</i> finding is the reachability, which is why segmentation does the heavy lifting."),
+            ("Real-world context", "This framing drives IEC 62443 zones and conduits, the Purdue model, and why OT change control is deliberately slow. It is also why safety instrumented systems (SIS) are kept physically separate from the control network: so that compromising the DCS still cannot defeat the layer whose only job is to prevent harm."),
+        ],
+    },
+]
+
+
+# ── Modules / tracks ──────────────────────────────────────────────────────────
+# The ladder outgrew a single grid at ~20 cards, so challenges are grouped into
+# tracks. `module` on each challenge is the slug; anything without one falls back
+# to "foundations" (the original 20).
+MODULES = [
+    {
+        "slug": "foundations", "name": "Foundations", "icon": "🎓",
+        "level": "Start here",
+        "blurb": "Encoding, recon, file analysis, crypto, web, auth and injection. "
+                 "Builds the vocabulary every other track assumes.",
+    },
+    {
+        "slug": "network", "name": "Network Traffic Analysis", "icon": "🌐",
+        "level": "Core skill",
+        "blurb": "Read real packet captures in Wireshark: harvest cleartext credentials, "
+                 "reassemble TCP streams, decode DNS exfiltration, read a port scan.",
+    },
+    {
+        "slug": "logs", "name": "Log Analysis & Detection", "icon": "📊",
+        "level": "Defensive",
+        "blurb": "The blue-team track. Find the one success in a brute force, the 200 among "
+                 "the 404s, impossible travel, and evidence an attacker tried to destroy.",
+    },
+    {
+        "slug": "phishing", "name": "Phishing & Email Forensics", "icon": "📧",
+        "level": "Defensive",
+        "blurb": "Triage real .eml files: trace Received hops to the true origin, read "
+                 "SPF/DKIM/DMARC, unmask deceptive links, decode attachments safely.",
+    },
+    {
+        "slug": "ot", "name": "OT / ICS Fundamentals", "icon": "🏭",
+        "level": "Specialist",
+        "blurb": "Industrial control systems: read Modbus, watch an unauthenticated write "
+                 "open a breaker, pull credentials off Telnet, and apply the SRP triad.",
+    },
+]
+MODULE_BY_SLUG = {m["slug"]: m for m in MODULES}
+DEFAULT_MODULE = "foundations"
+
 # Documents served by the /docs tab (also used for per-challenge further reading).
-DOCS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+DOCS_DIR = os.path.join(APP_DIR, "docs")
+# Challenge artifacts (captures, logs, .eml files) generated at build time.
+FILES_DIR = os.path.join(APP_DIR, "challenge_files")
 
 # ── Progressive hints ─────────────────────────────────────────────────────────
 # Three tiers per challenge, each revealed only on click. The old always-visible
@@ -510,6 +865,96 @@ DOC_LINKS = {
     20: ["Think_Like_a_Hacker_CTF.pdf", "What_is_a_CTF.pdf"],
 }
 
+HINT_TIERS.update({
+    21: [("Nudge", "Two TCP conversations are in this capture. One is just a page load; the other submits a form. Which HTTP method sends form data in the body?"),
+         ("Method", "Filter for POST requests, then follow that HTTP stream and read the request body. The form fields are plain <code>name=value</code> pairs."),
+         ("Exact command", "<code>tshark -r portal_capture.pcap -Y 'http.request.method==\"POST\"' -T fields -e urlencoded-form.value</code> &nbsp;or in Wireshark: filter <code>http.request.method == \"POST\"</code> then right-click &rarr; Follow &rarr; HTTP Stream")],
+    22: [("Nudge", "Searching individual packets will fail here — that's the lesson. TCP is a byte stream, so where does the complete message exist?"),
+         ("Method", "Let TCP reassemble the conversation: follow the stream and read the server's side of it in order."),
+         ("Exact command", "In Wireshark: right-click any packet &rarr; <b>Follow &gt; TCP Stream</b>. On the command line: <code>tshark -r relay_session.pcap -qz follow,tcp,ascii,0</code>")],
+    23: [("Nudge", "Most lookups are ordinary plant hostnames. A handful go to a domain that isn't — and their leftmost labels are long and hex-looking."),
+         ("Method", "Extract every query name, keep the ones for the odd domain, take the first label of each in sequence order, concatenate them and decode from hex."),
+         ("Exact command", "<code>tshark -r dns_traffic.pcap -Y 'dns.qry.name contains \"tunnel\"' -T fields -e dns.qry.name | cut -d. -f1 | tr -d '\\n' | xxd -r -p</code>")],
+    24: [("Nudge", "In a SYN scan, a closed port answers RST/ACK and an open one answers SYN/ACK. Which port answered differently?"),
+         ("Method", "Filter for packets with both SYN and ACK set to find the single open port, then follow the later conversation to that port and read the banner the service sent."),
+         ("Exact command", "<code>tshark -r scan_capture.pcap -Y 'tcp.flags.syn==1 &amp;&amp; tcp.flags.ack==1' -T fields -e tcp.srcport</code> &nbsp;then follow the stream on that port (it's 8291)")],
+    25: [("Nudge", "Hundreds of lines say <code>Failed password</code>. The incident is the line that doesn't."),
+         ("Method", "Find the attacking IP from the failures, then search for <code>Accepted</code> from that same IP. The marker is logged on the next lines of that session."),
+         ("Exact command", "<code>grep 'Accepted' auth.log</code> &nbsp;— then look at the lines immediately after the one from <code>203.0.113.47</code>")],
+    26: [("Nudge", "The scanner's requests almost all returned 404. You want the one that didn't."),
+         ("Method", "The status code is the 9th whitespace-separated field in the combined log format, so filter on it directly."),
+         ("Exact command", "<code>awk '$9==200' access.log | grep 203.0.113.47</code>")],
+    27: [("Nudge", "Group the log by user and look at where each one connected from. One account appears in two very different places."),
+         ("Method", "List unique user + geo pairs to find the account with two locations, then read that account's consecutive session lines and the note on the anomalous one."),
+         ("Exact command", "<code>awk -F, '{print $2, $4}' vpn_sessions.log | sort -u</code> &nbsp;then <code>grep m.okafor vpn_sessions.log</code>")],
+    28: [("Nudge", "The live log is missing the hours you care about — and it says so. Where else does log data live on a Linux host?"),
+         ("Method", "Logs rotate: yesterday's entries moved to a <code>.1</code> file before the clear. Search the rotated copy."),
+         ("Exact command", "<code>grep -i marker plant_syslog.log.1</code> &nbsp;or just <code>cat plant_syslog.log.1</code>")],
+    29: [("Nudge", "Each mail server adds its own <code>Received:</code> line to the top. So which end of the stack is the oldest hop?"),
+         ("Method", "Read the Received headers from the bottom up. The earliest one is the originating relay — and it added an extra header of its own."),
+         ("Exact command", "<code>grep -iA3 '^received' phish_01.eml | tail -12</code> &nbsp;— look at the bottom-most Received block")],
+    30: [("Nudge", "The receiving mail server already did the work of checking whether the sender claim was genuine. It wrote the result down."),
+         ("Method", "Read the <code>Authentication-Results</code> header. All three of SPF, DKIM and DMARC failed, and an audit note sits in the same header."),
+         ("Exact command", "<code>grep -iA5 'authentication-results' phish_02.eml</code>")],
+    31: [("Nudge", "The email shows you a real Microsoft URL. That's the decoy — look at where each link actually points, not what it displays."),
+         ("Method", "Pull every <code>href</code> out of the raw HTML. One of them doesn't match its own anchor text at all."),
+         ("Exact command", "<code>grep -o 'href=\"[^\"]*\"' phish_03.eml</code>")],
+    32: [("Nudge", "The attachment is base64 text sitting in the message source. You never need to run it to read it."),
+         ("Method", "Parse the MIME parts and decode the base64 body of the attachment, or copy the base64 block out and decode it by hand."),
+         ("Exact command", "<code>python3 -I -c \"import email;m=email.message_from_file(open('phish_04.eml'));[print(p.get_payload(decode=True).decode()) for p in m.walk() if p.get_filename()]\"</code>")],
+    33: [("Nudge", "Wireshark dissects port 502 as Modbus/TCP for you. Most packets are the same read loop — find the one exchange that isn't."),
+         ("Method", "Filter on Modbus and compare function codes. The repeated ones are <code>0x03</code> (Read Holding Registers); the odd one out is a device-identification request whose reply carries a string."),
+         ("Exact command", "<code>tshark -r modbus_poll.pcap -qz follow,tcp,ascii,0 | tail -5</code> &nbsp;or filter <code>modbus</code> in Wireshark and read the last response")],
+    34: [("Nudge", "Function code <code>0x05</code> is Write Single Coil. Who sent one, and is that address supposed to be talking to a PLC at all?"),
+         ("Method", "Isolate the coil write in the capture to confirm the command and its source, then line its timestamp up against the alarm journal and read the acknowledgement token."),
+         ("Exact command", "<code>tshark -r modbus_write.pcap -Y 'modbus.func_code==5' -T fields -e ip.src -e modbus.reference_num</code> &nbsp;then <code>grep ack_token breaker_alarm.log</code>")],
+    35: [("Nudge", "Telnet sends one keystroke per packet, so the password is never in any single packet. Same technique as challenge 22."),
+         ("Method", "Follow the TCP stream to reassemble the whole session. You'll see the login, the password typed character by character, and the key the gateway issued on success."),
+         ("Exact command", "<code>tshark -r plc_telnet.pcap -qz follow,tcp,ascii,0</code> &nbsp;— look for <code>session-key:</code>")],
+    36: [("Nudge", "This one is about judgement, not tooling. Read the file's own comments — it tells you how to rank the three vertices."),
+         ("Method", "Find the <code>[review]</code> section. It spells out the precedence order and stores it in a setting."),
+         ("Exact command", "<code>grep srp_precedence hmi_station.conf</code>")],
+})
+
+TAKEAWAYS.update({
+    21: "If it isn't encrypted, assume it's already been read. Internal networks are not private.",
+    22: "Packets aren't messages. Reassemble the stream before you conclude something isn't there.",
+    23: "DNS is a covert channel. If you only inspect HTTP, you are not inspecting egress.",
+    24: "A scan tells an attacker what exists; a banner tells them what to exploit. Don't advertise versions.",
+    25: "Failed logins are noise. One success after many failures is an incident — alert on the transition.",
+    26: "In a scan log the path is what was tried; the status code is what exists. Read the codes.",
+    27: "One identity cannot be in two places at once. Geo-velocity catches credential theft with no malware signature.",
+    28: "A cleared log is evidence, not an absence of it. Ship logs off-host so the local copy stops being authoritative.",
+    29: "From: is free text. Received headers added by your own infrastructure are the part you can trust.",
+    30: "DMARC failure on a message claiming a real organisation is close to conclusive. Alignment is what matters.",
+    31: "Link text and link destination are unrelated. Check the registrable domain, not the display text.",
+    32: "Attachments are text in the message source — decode statically, never double-click. Double extensions hide intent.",
+    33: "Modbus has no authentication by design. You cannot patch that, so the network has to provide it.",
+    34: "Reachability is the vulnerability. If a host can reach port 502, it can operate the plant.",
+    35: "Legacy cleartext protocols hand over credentials to anyone on the path. Front them with a bastion or remove them.",
+    36: "In OT the order is Safety, then Reliability, then Performance. Anyone inverting it is making a decision that isn't theirs.",
+})
+
+DOC_LINKS.update({
+    21: ["CTF_VM_Setup_Guide.pdf"],
+    22: ["CTF_VM_Setup_Guide.pdf"],
+    23: ["Think_Like_a_Hacker_CTF.pdf"],
+    24: ["Think_Like_a_Hacker_CTF.pdf"],
+    25: ["Think_Like_a_Hacker_CTF.pdf"],
+    26: ["Think_Like_a_Hacker_CTF.pdf"],
+    27: ["Think_Like_a_Hacker_CTF.pdf"],
+    28: ["Think_Like_a_Hacker_CTF.pdf"],
+    29: ["Beginner's Guide to Cyber & CTFs.pdf"],
+    30: ["Beginner's Guide to Cyber & CTFs.pdf"],
+    31: ["Think_Like_a_Hacker_CTF.pdf"],
+    32: ["CTF_VM_Setup_Guide.pdf"],
+    33: ["CTF_VM_Setup_Guide.pdf"],
+    34: ["Think_Like_a_Hacker_CTF.pdf"],
+    35: ["CTF_VM_Setup_Guide.pdf"],
+    36: ["What_is_a_CTF.pdf"],
+})
+
+
 _HINT_MARKER = "<b>Hint:</b>"
 
 
@@ -536,6 +981,7 @@ def _prepare_challenges():
         c["hints"] = tiers
 
         c["takeaway"] = TAKEAWAYS.get(c["id"], "")
+        c.setdefault("module", DEFAULT_MODULE)
         c["docs"] = [name for name in DOC_LINKS.get(c["id"], [])
                      if os.path.isfile(os.path.join(DOCS_DIR, name))]
 
@@ -566,6 +1012,36 @@ def record_attempt(cid, correct):
 def record_session():
     with _STATS_LOCK:
         SESSION_COUNT["total"] += 1
+
+
+def module_challenges(slug):
+    return [c for c in CHALLENGES if c["module"] == slug]
+
+
+def module_progress():
+    """Per-track progress for the index: counts, points and percent complete."""
+    solved = set(get_solved())
+    out = []
+    for m in MODULES:
+        chs = module_challenges(m["slug"])
+        pts = sum(c["points"] for c in chs)
+        got = sum(c["points"] for c in chs if c["id"] in solved)
+        done = sum(1 for c in chs if c["id"] in solved)
+        out.append({**m, "count": len(chs), "solved": done, "points": pts,
+                    "earned": got, "pct": round(got / pts * 100) if pts else 0})
+    return out
+
+
+def module_neighbours(c):
+    """Previous/next challenge id within the same track (None at the ends)."""
+    ids = [x["id"] for x in module_challenges(c["module"])]
+    try:
+        i = ids.index(c["id"])
+    except ValueError:
+        return None, None, 0, 0
+    prev_id = ids[i - 1] if i > 0 else None
+    next_id = ids[i + 1] if i < len(ids) - 1 else None
+    return prev_id, next_id, i + 1, len(ids)
 
 
 def header_ctx(active, show_stats=True):
@@ -903,6 +1379,118 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
   max-width: 500px; margin: 0 auto 0.5rem;
   background: rgba(0,255,157,0.1); border-radius: 4px; height: 8px;
 }
+.progress-bar { height: 8px; background: var(--neon); border-radius: 4px; transition: width 0.5s ease; }
+.stats { font-size: 0.78rem; color: var(--dim); }
+.tracks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 1.2rem;
+  padding: 2rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.track {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.4rem;
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+  transition: all 0.2s;
+  position: relative;
+}
+.track:hover {
+  border-color: var(--neon);
+  box-shadow: 0 0 20px rgba(0,255,157,0.12);
+  text-decoration: none;
+}
+.track:focus-visible { outline: 2px solid var(--neon); outline-offset: 3px; }
+.track.done { border-color: rgba(0,255,157,0.45); background: rgba(0,255,157,0.04); }
+.track-top { display: flex; align-items: baseline; gap: 0.7rem; margin-bottom: 0.5rem; }
+.track-icon { font-size: 1.5rem; }
+.track-name { font-size: 1.05rem; font-weight: 700; color: var(--neon); }
+.track-level {
+  margin-left: auto; font-size: 0.62rem; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--neon2);
+  border: 1px solid rgba(45,226,255,0.3); border-radius: 3px; padding: 0.15rem 0.45rem;
+}
+.track-blurb { font-size: 0.83rem; line-height: 1.65; color: var(--text); margin-bottom: 1rem; }
+.track-bar-wrap { background: rgba(0,255,157,0.1); border-radius: 3px; height: 6px; margin-bottom: 0.5rem; }
+.track-bar { height: 6px; background: var(--neon); border-radius: 3px; transition: width 0.5s ease; }
+.track-meta { display: flex; font-size: 0.72rem; color: var(--dim); gap: 0.6rem; }
+.track-meta .done-tick { color: var(--neon); }
+.track-meta .pts { margin-left: auto; color: var(--amber); }
+</style>
+</head>
+<body>
+<!-- FLAG{source_code_tells_all} -->
+""" + SITE_HEADER + """
+<div class="hero">
+  <h1>Training Academy</h1>
+  <p>{{ total_challenges }} CHALLENGES · {{ modules|length }} TRACKS · CYBER CTF CLUB</p>
+  <div class="progress-bar-wrap"><div class="progress-bar" style="width:{{ pct }}%"></div></div>
+  <div class="stats">{{ score }} / {{ total }} points &nbsp;·&nbsp; {{ solved_count }} / {{ total_challenges }} solved &nbsp;·&nbsp; {{ pct }}% complete</div>
+</div>
+
+{% if flash %}
+<div style="background:rgba(0,255,157,0.08);border:1px solid var(--neon);border-radius:6px;padding:0.8rem 1.5rem;margin:1.5rem 2rem;color:var(--neon);font-size:0.9rem;">
+  ✅ {{ flash }}
+</div>
+{% endif %}
+{% if error %}
+<div style="background:rgba(255,56,96,0.08);border:1px solid var(--red);border-radius:6px;padding:0.8rem 1.5rem;margin:1.5rem 2rem;color:var(--red);font-size:0.9rem;">
+  ❌ {{ error }}
+</div>
+{% endif %}
+
+<div class="tracks">
+{% for m in modules %}
+  <a class="track {% if m.solved == m.count and m.count %}done{% endif %}" href="/module/{{ m.slug }}">
+    <div class="track-top">
+      <span class="track-icon">{{ m.icon }}</span>
+      <span class="track-name">{{ m.name }}</span>
+      <span class="track-level">{{ m.level }}</span>
+    </div>
+    <div class="track-blurb">{{ m.blurb }}</div>
+    <div class="track-bar-wrap"><div class="track-bar" style="width:{{ m.pct }}%"></div></div>
+    <div class="track-meta">
+      <span>{% if m.solved == m.count and m.count %}<span class="done-tick">✓ complete</span>{% else %}{{ m.solved }} / {{ m.count }} solved{% endif %}</span>
+      <span class="pts">{{ m.points }} pts</span>
+    </div>
+  </a>
+{% endfor %}
+</div>
+</body></html>
+"""
+
+
+MODULE_PAGE = """<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ module.name }} · Cyber Training Academy</title>
+""" + FAVICON_LINK + """
+<style>
+""" + BASE_STYLE + """
+.hero {
+  padding: 3rem 2rem 2rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(0,255,157,0.06), transparent 70%);
+}
+.hero h1 {
+  font-weight: 700;
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
+  color: var(--neon);
+  text-shadow: 0 0 30px rgba(0,255,157,0.4);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+.hero p { color: var(--dim); font-size: 0.9rem; letter-spacing: 0.1em; margin-bottom: 1.5rem; }
+.progress-bar-wrap {
+  max-width: 500px; margin: 0 auto 0.5rem;
+  background: rgba(0,255,157,0.1); border-radius: 4px; height: 8px;
+}
 .progress-bar {
   height: 8px; background: var(--neon); border-radius: 4px;
   transition: width 0.5s ease;
@@ -965,16 +1553,20 @@ INDEX_PAGE = """<!DOCTYPE html><html lang="en">
   margin-top: 0.5rem;
 }
 .cat-row:first-child { border-top: none; margin-top: 0; }
+.crumb { font-size: 0.78rem; margin-bottom: 0.8rem; }
+.crumb a { color: var(--dim); }
+.crumb a:hover { color: var(--neon); }
 </style>
 </head>
 <body>
 <!-- FLAG{source_code_tells_all} -->
 """ + SITE_HEADER + """
 <div class="hero">
-  <h1>Training Academy</h1>
-  <p>20 PROGRESSIVE CHALLENGES · BUILD SKILLS FROM ZERO · CYBER CTF CLUB</p>
-  <div class="progress-bar-wrap"><div class="progress-bar" style="width:{{ pct }}%"></div></div>
-  <div class="stats">{{ score }} / {{ total }} points &nbsp;·&nbsp; {{ solved_count }} / {{ total_challenges }} solved &nbsp;·&nbsp; {{ pct }}% complete</div>
+  <div class="crumb"><a href="/">← All tracks</a></div>
+  <h1>{{ module.icon }} {{ module.name }}</h1>
+  <p>{{ module.blurb }}</p>
+  <div class="progress-bar-wrap"><div class="progress-bar" style="width:{{ mod_pct }}%"></div></div>
+  <div class="stats">{{ mod_score }} / {{ mod_points }} points &nbsp;·&nbsp; {{ mod_solved }} / {{ mod_total }} solved &nbsp;·&nbsp; {{ mod_pct }}% complete</div>
 </div>
 
 {% if flash %}
@@ -1020,6 +1612,9 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
 """ + BASE_STYLE + """
 .wrap { max-width: 760px; margin: 0 auto; padding: 2rem; }
 .back { color: var(--dim); font-size:0.8rem; margin-bottom:1.5rem; display:block; }
+.crumb { font-size:0.75rem; color:var(--dim); margin-bottom:0.9rem; }
+.crumb a { color:var(--dim); }
+.crumb a:hover { color:var(--neon); }
 .cnum { font-size:0.72rem; letter-spacing:0.25em; color:var(--dim); margin-bottom:0.4rem; }
 .ctitle { font-size:1.5rem; font-weight:700; color:var(--neon); margin-bottom:0.3rem; }
 .skill-tag {
@@ -1221,7 +1816,10 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
 <body>
 """ + SITE_HEADER + """
 <div class="wrap">
-  <div class="cnum">CHALLENGE {{ '%02d'|format(c.id) }} of {{ total_challenges }}</div>
+  <div class="crumb">
+    <a href="/">All tracks</a> &nbsp;/&nbsp; <a href="/module/{{ module.slug }}">{{ module.icon }} {{ module.name }}</a>
+  </div>
+  <div class="cnum">CHALLENGE {{ '%02d'|format(c.id) }} &nbsp;·&nbsp; {{ pos }} of {{ mod_count }} in this track</div>
   <div class="ctitle">{{ c.title }} <span class="pts-badge">{{ c.points }} pts</span></div>
   <div class="skill-tag">🎓 Skill: {{ c.skill }}</div>
 
@@ -1231,10 +1829,10 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
     {% if c.takeaway %}
     <div class="takeaway"><b>What this means:</b> {{ c.takeaway }}</div>
     {% endif %}
-    {% if c.id < total_challenges %}
-    <a class="next-cta" href="/challenge/{{ c.id + 1 }}">Next: Challenge {{ '%02d'|format(c.id + 1) }} →</a>
+    {% if next_id %}
+    <a class="next-cta" href="/challenge/{{ next_id }}">Next: Challenge {{ '%02d'|format(next_id) }} →</a>
     {% else %}
-    <a class="next-cta" href="/">🏁 All {{ total_challenges }} complete — back to the ladder</a>
+    <a class="next-cta" href="/module/{{ module.slug }}">🏁 {{ module.name }} complete — back to the track</a>
     {% endif %}
   </div>
   {% endif %}
@@ -1295,12 +1893,12 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
   {% endif %}
 
   <div class="nav-row">
-    {% if c.id > 1 %}
-    <a href="/challenge/{{ c.id - 1 }}" class="nav-btn">← Challenge {{ c.id - 1 }}</a>
+    {% if prev_id %}
+    <a href="/challenge/{{ prev_id }}" class="nav-btn">← Challenge {{ '%02d'|format(prev_id) }}</a>
     {% endif %}
-    <a href="/" class="nav-btn" style="margin-left:auto;">All Challenges</a>
-    {% if c.id < total_challenges %}
-    <a href="/challenge/{{ c.id + 1 }}" class="nav-btn">Challenge {{ c.id + 1 }} →</a>
+    <a href="/module/{{ module.slug }}" class="nav-btn" style="margin-left:auto;">{{ module.icon }} {{ module.name }}</a>
+    {% if next_id %}
+    <a href="/challenge/{{ next_id }}" class="nav-btn">Challenge {{ '%02d'|format(next_id) }} →</a>
     {% endif %}
   </div>
 </div>
@@ -1617,9 +2215,30 @@ def index():
     flash = request.args.get("flash", "")
     error = request.args.get("error", "")
     return render_template_string(INDEX_PAGE,
-        challenges=CHALLENGES, solved=solved, pct=pct,
-        categories=CATEGORY_ORDER,
+        modules=module_progress(), pct=pct,
         flash=flash, error=error, **header_ctx("challenges"))
+
+
+@app.route("/module/<slug>")
+def module(slug):
+    if not session.get("warned"):
+        return redirect(url_for("welcome"))
+    m = MODULE_BY_SLUG.get(slug)
+    if not m:
+        return redirect(url_for("index"))
+    solved = get_solved()
+    chs = module_challenges(slug)
+    pts = sum(c["points"] for c in chs)
+    earned = sum(c["points"] for c in chs if c["id"] in solved)
+    # Categories in this track only, in first-appearance order.
+    cats = list(dict.fromkeys(c["category"] for c in chs))
+    return render_template_string(MODULE_PAGE,
+        module=m, challenges=chs, solved=solved, categories=cats,
+        mod_score=earned, mod_points=pts,
+        mod_solved=sum(1 for c in chs if c["id"] in solved), mod_total=len(chs),
+        mod_pct=round(earned / pts * 100) if pts else 0,
+        flash=request.args.get("flash", ""), error=request.args.get("error", ""),
+        **header_ctx("challenges"))
 
 
 @app.route("/challenge/<int:cid>", methods=["GET", "POST"])
@@ -1642,8 +2261,12 @@ def challenge(cid):
             already_solved = True
         else:
             error = message
+    prev_id, next_id, pos, mod_count = module_neighbours(c)
     return render_template_string(CHALLENGE_PAGE,
-        c=c, solved=already_solved, error=error, **header_ctx("challenges"))
+        c=c, solved=already_solved, error=error,
+        module=MODULE_BY_SLUG.get(c["module"], MODULES[0]),
+        prev_id=prev_id, next_id=next_id, pos=pos, mod_count=mod_count,
+        **header_ctx("challenges"))
 
 
 @app.route("/instructor")
@@ -1686,7 +2309,7 @@ def favicon_ico():
 # ── File downloads ────────────────────────────────────────────────────────────
 @app.route("/files/<path:filename>")
 def files(filename):
-    return send_from_directory("/app/challenge_files", filename)
+    return send_from_directory(FILES_DIR, filename)
 
 
 # ── Documents ─────────────────────────────────────────────────────────────────

@@ -1,0 +1,24 @@
+Delivered-To: d.lindqvist@plant.local
+Received: from mx01.plant.local (mx01.plant.local [192.168.20.25])
+    by inbox.plant.local with LMTP id 55ee77aa
+    for <d.lindqvist@plant.local>; Tue, 18 Nov 2026 09:31:44 -0500
+From: "Microsoft 365" <no-reply@notifications.microsoft.com>
+To: <d.lindqvist@plant.local>
+Subject: You have 3 quarantined messages
+Date: Tue, 18 Nov 2026 09:31:40 -0500
+Message-ID: <q3-55ee77aa@notifications.microsoft.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body style="font-family:Segoe UI,sans-serif">
+<p>You have <b>3</b> messages held in quarantine.</p>
+<p>
+  <a href="https://login.microsoftonline.com/common/oauth2/authorize">
+     https://login.microsoftonline.com/common/oauth2/authorize
+  </a>
+</p>
+<p>
+  <a href="http://plant-quarantine-review.cc/sso?r=FLAG{hover_before_you_click}">Review messages</a>
+</p>
+<p style="color:#888;font-size:11px">Microsoft Corporation, One Microsoft Way</p>
+</body></html>
