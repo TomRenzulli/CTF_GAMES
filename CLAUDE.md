@@ -217,6 +217,15 @@ that used to sit visible in the story, by `_split_inline_hint()`. **Do not put t
 solution back in the story** — the always-visible command was the problem this
 replaced. Hints are hidden once the challenge is solved.
 
+### Planted source comment (`source_comment`)
+A challenge with `"source_comment": True` (currently only #4, *View Source*) gets an
+HTML comment emitted in `CHALLENGE_PAGE`'s `<head>`, just after `<title>`, carrying
+that challenge's own `flag`. This is the only place a flag is deliberately served to
+the browser. The key existed on challenge 4 for a while with **no code reading it**,
+which made the challenge unsolvable — if you touch that template block, re-check
+`/challenge/4` actually contains the comment. Worded as a developer TODO rather than
+a bare `FLAG{}` so students practise spotting a realistic leak.
+
 ### Post-solve takeaway
 `TAKEAWAYS[id]` is one line shown in the solved banner, plus a prominent
 `.next-cta` to the next challenge (or back to the ladder on #20), and the Training

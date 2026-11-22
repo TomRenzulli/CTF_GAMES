@@ -1502,7 +1502,8 @@ CHALLENGE_PAGE = """<!DOCTYPE html><html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ c.title }} · Cyber Training Academy</title>
-""" + FAVICON_LINK + """
+{% if c.source_comment %}<!-- TODO(dev): remove this before the site goes live -- staging flag for QA: {{ c.flag }} -->
+{% endif %}""" + FAVICON_LINK + """
 <style>
 """ + BASE_STYLE + """
 .wrap { max-width: 760px; margin: 0 auto; padding: 2rem; }
