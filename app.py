@@ -586,7 +586,7 @@ CHALLENGES += [
         "id": 30, "title": "30 · When Everything Fails",
         "category": "Email Headers", "module": "phishing",
         "skill": "Reading SPF, DKIM and DMARC results",
-        "story": "A 'Payroll Services' email claims to come from <code>bnl.gov</code> and wants a direct "
+        "story": "A 'Payroll Services' email claims to come from <code>contoso.com</code> and wants a direct "
                  "deposit form signed. The receiving mail server already checked whether that claim is "
                  "true, and wrote the answer in the headers.<br><br>"
                  "Download <a href='/files/phish_02.eml'>phish_02.eml</a> and read the "
@@ -596,7 +596,7 @@ CHALLENGES += [
         "points": 175,
         "notes": [
             ("What the three checks actually do", "<b>SPF</b> asks whether the sending IP is authorised to send for the envelope domain. <b>DKIM</b> verifies a cryptographic signature over the message, proving it wasn't altered and really came from the signing domain. <b>DMARC</b> ties them together: it requires SPF or DKIM to pass <i>and align</i> with the visible <code>From:</code> domain, and publishes what to do on failure."),
-            ("Why alignment is the crux", "An attacker can trivially pass SPF for a domain they own — <code>evil.com</code> can publish any SPF record it likes. What they cannot do is pass an <i>aligned</i> check for <code>bnl.gov</code> without controlling its DNS or signing key. That is why <code>dmarc=fail</code> on a message claiming a real organisation is close to conclusive."),
+            ("Why alignment is the crux", "An attacker can trivially pass SPF for a domain they own — <code>evil.com</code> can publish any SPF record it likes. What they cannot do is pass an <i>aligned</i> check for <code>contoso.com</code> without controlling its DNS or signing key. That is why <code>dmarc=fail</code> on a message claiming a real organisation is close to conclusive."),
             ("Real-world context", "A <code>p=reject</code> DMARC policy means the owner has explicitly asked receivers to refuse failures — so a failing message that still landed in a mailbox points at a gap in the receiving side's enforcement. Treating these headers as the first filter is what keeps domain-spoofed phishing out of inboxes at scale."),
             ("Key tools", "<code>grep -iA5 'authentication-results'</code> &nbsp;·&nbsp; <code>dig TXT _dmarc.domain.com</code> and <code>dig TXT domain.com</code> to read the published policy &nbsp;·&nbsp; MXToolbox SPF/DMARC checkers &nbsp;·&nbsp; DMARC aggregate (RUA) reports"),
         ],

@@ -9,7 +9,7 @@ Received: from smtp.bulk-sender.ru (smtp.bulk-sender.ru [91.219.238.14])
     by relay-out.mailvendor.net with ESMTP id 7c91ff03;
     Tue, 18 Nov 2026 07:14:41 -0500
     X-Origin-Note: FLAG{received_headers_dont_lie}
-From: "BNL IT Helpdesk" <helpdesk@bnl-support-portal.com>
+From: "Contoso IT Helpdesk" <helpdesk@contoso-support-portal.com>
 To: <operator@plant.local>
 Subject: ACTION REQUIRED: Your VPN certificate expires today
 Date: Tue, 18 Nov 2026 07:14:38 -0500
@@ -18,6 +18,6 @@ Content-Type: text/plain; charset=utf-8
 
 Your VPN certificate expires in 4 hours. Renew now to avoid losing access.
 
-Renew: http://bnl-support-portal.com/vpn/renew?u=operator
+Renew: http://contoso-support-portal.com/vpn/renew?u=operator
 
 IT Helpdesk

@@ -299,7 +299,7 @@ Received: from smtp.bulk-sender.ru (smtp.bulk-sender.ru [91.219.238.14])
     by relay-out.mailvendor.net with ESMTP id 7c91ff03;
     Tue, 18 Nov 2026 07:14:41 -0500
     X-Origin-Note: {flag29}
-From: "BNL IT Helpdesk" <helpdesk@bnl-support-portal.com>
+From: "Contoso IT Helpdesk" <helpdesk@contoso-support-portal.com>
 To: <operator@plant.local>
 Subject: ACTION REQUIRED: Your VPN certificate expires today
 Date: Tue, 18 Nov 2026 07:14:38 -0500
@@ -308,7 +308,7 @@ Content-Type: text/plain; charset=utf-8
 
 Your VPN certificate expires in 4 hours. Renew now to avoid losing access.
 
-Renew: http://bnl-support-portal.com/vpn/renew?u=operator
+Renew: http://contoso-support-portal.com/vpn/renew?u=operator
 
 IT Helpdesk
 """)
@@ -320,17 +320,17 @@ Received: from mx01.plant.local (mx01.plant.local [192.168.20.25])
     by inbox.plant.local with LMTP id 1a2b3c4d
     for <m.okafor@plant.local>; Tue, 18 Nov 2026 08:02:10 -0500
 Authentication-Results: mx01.plant.local;
-    spf=fail (sender IP is 91.219.238.14) smtp.mailfrom=bnl.gov;
-    dkim=fail (signature did not verify) header.d=bnl.gov;
-    dmarc=fail (p=REJECT) header.from=bnl.gov;
+    spf=fail (sender IP is 91.219.238.14) smtp.mailfrom=contoso.com;
+    dkim=fail (signature did not verify) header.d=contoso.com;
+    dmarc=fail (p=REJECT) header.from=contoso.com;
     x-audit-note={flag30}
-Received-SPF: fail (bnl.gov: domain of bnl.gov does not designate
+Received-SPF: fail (contoso.com: domain of contoso.com does not designate
     91.219.238.14 as permitted sender) client-ip=91.219.238.14
-From: "Payroll Services" <payroll@bnl.gov>
+From: "Payroll Services" <payroll@contoso.com>
 To: <m.okafor@plant.local>
 Subject: Updated direct deposit form — signature needed
 Date: Tue, 18 Nov 2026 08:02:04 -0500
-Message-ID: <a71f@bnl.gov>
+Message-ID: <a71f@contoso.com>
 Content-Type: text/plain; charset=utf-8
 
 Please review and sign the attached direct deposit update by end of day.

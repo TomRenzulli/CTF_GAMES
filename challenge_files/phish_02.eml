@@ -3,17 +3,17 @@ Received: from mx01.plant.local (mx01.plant.local [192.168.20.25])
     by inbox.plant.local with LMTP id 1a2b3c4d
     for <m.okafor@plant.local>; Tue, 18 Nov 2026 08:02:10 -0500
 Authentication-Results: mx01.plant.local;
-    spf=fail (sender IP is 91.219.238.14) smtp.mailfrom=bnl.gov;
-    dkim=fail (signature did not verify) header.d=bnl.gov;
-    dmarc=fail (p=REJECT) header.from=bnl.gov;
+    spf=fail (sender IP is 91.219.238.14) smtp.mailfrom=contoso.com;
+    dkim=fail (signature did not verify) header.d=contoso.com;
+    dmarc=fail (p=REJECT) header.from=contoso.com;
     x-audit-note=FLAG{spf_dkim_dmarc_all_failed}
-Received-SPF: fail (bnl.gov: domain of bnl.gov does not designate
+Received-SPF: fail (contoso.com: domain of contoso.com does not designate
     91.219.238.14 as permitted sender) client-ip=91.219.238.14
-From: "Payroll Services" <payroll@bnl.gov>
+From: "Payroll Services" <payroll@contoso.com>
 To: <m.okafor@plant.local>
 Subject: Updated direct deposit form — signature needed
 Date: Tue, 18 Nov 2026 08:02:04 -0500
-Message-ID: <a71f@bnl.gov>
+Message-ID: <a71f@contoso.com>
 Content-Type: text/plain; charset=utf-8
 
 Please review and sign the attached direct deposit update by end of day.

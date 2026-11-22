@@ -1,7 +1,9 @@
 # Cyber Training Academy — CTF Platform
 
 ## Project Overview
-A beginner-focused Capture The Flag (CTF) web platform built for the **Cyber CTF Club** at Brookhaven National Laboratory. The platform runs as a single Flask app serving 20 progressive challenges that teach real cybersecurity skills. Students submit flags and accumulate points through a session-based scoreboard.
+A beginner-focused Capture The Flag (CTF) web platform built for the **Cyber CTF Club**. The platform runs as a single Flask app serving progressive challenges that teach real cybersecurity skills.
+
+Challenge scenarios use fictional organisations only — `contoso.com` for the corporate domain and `plant.local` for the internal network. Do not introduce a real organisation's name or domain into challenge content, documents or commit messages. Students submit flags and accumulate points through a session-based scoreboard.
 
 **Live repo:** https://github.com/TomRenzulli/CTF_GAMES  
 **Handle:** Wooskii / @TomRenzulli

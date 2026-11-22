@@ -111,8 +111,8 @@ requires you to open anything dangerous.
 </div>
 <p class="muted" style="margin-top:-2pt;margin-bottom:7pt"><b>Why alignment decides it:</b> an
 attacker can trivially pass SPF for a domain <i>they</i> own &mdash; <code>evil.com</code> can
-publish any SPF record it likes, and the mail still says <code>From: payroll@bnl.gov</code>. What
-they cannot do is produce an <b>aligned</b> pass for <code>bnl.gov</code> without its DNS or
+publish any SPF record it likes, and the mail still says <code>From: payroll@contoso.com</code>. What
+they cannot do is produce an <b>aligned</b> pass for <code>contoso.com</code> without its DNS or
 signing key. So <code>spf=pass</code> alone means little; <code>dmarc=fail</code> on a message
 claiming a real organisation is close to conclusive. Check with
 <code>dig TXT _dmarc.example.com</code>.</p>
