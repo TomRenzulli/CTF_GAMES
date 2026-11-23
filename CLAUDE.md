@@ -274,7 +274,11 @@ because decoding is the skill being taught. Don't "fix" them by embedding the fl
 
 `/files/<name>` serves these from `FILES_DIR`, resolved relative to `app.py`
 (it was hardcoded to `/app/challenge_files`, which broke every download outside
-Docker).
+Docker). The route **refuses any `.py`/`.pyc`** — `generate.py` and `pcapgen.py`
+live in `FILES_DIR` and hard-code ~18 flags, so serving them handed out half the
+answer key to anyone who guessed the URL. Keep that block if you touch the route;
+don't allow-list by filename (a new build script would leak). Student artifacts
+(.pcap/.eml/.log/.png/.pdf/.txt/.bin) are unaffected.
 
 ### Shared header (`SITE_HEADER`)
 One header definition for all pages. `header_ctx(active, show_stats=True)` supplies

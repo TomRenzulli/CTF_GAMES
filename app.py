@@ -192,7 +192,7 @@ CHALLENGES = [
         "category": "Crypto",
         "skill": "Brute-forcing Caesar cipher (26 shifts)",
         "story": "This message was shifted by an unknown amount. Try all 26 possibilities:<br><br>"
-                 "<code class='block-code'>IRGQ{lhk_jxhzr_kyv_jyzwk}</code><br><br>"
+                 "<code class='block-code'>IODJ{brx_euxwh_wkh_vkliw}</code><br><br>"
                  "One of the 26 rotations will produce a readable <code>FLAG{...}</code>.<br><br>"
                  "<b>Hint:</b> CyberChef → 'ROT13 Brute Force', or write a loop in Python:<br>"
                  "<code>for i in range(26): print(i, ''.join(chr((ord(c)-65-i)%26+65) if c.isupper() else c for c in msg))</code>",
@@ -2205,6 +2205,13 @@ def favicon_ico():
 # ── File downloads ────────────────────────────────────────────────────────────
 @app.route("/files/<path:filename>")
 def files(filename):
+    # Only student-facing challenge artifacts are downloadable. The generator
+    # scripts (generate.py, pcapgen.py) live in this same directory and contain
+    # plaintext flags for ~18 challenges, so serving them here handed out more
+    # than half the answer key to anyone who guessed the filename. Block build
+    # sources by extension rather than allow-listing, so a new .py never leaks.
+    if os.path.splitext(filename)[1].lower() in (".py", ".pyc"):
+        return "Not found", 404
     return send_from_directory(FILES_DIR, filename)
 
 
