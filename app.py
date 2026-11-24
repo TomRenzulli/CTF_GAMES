@@ -638,6 +638,250 @@ CHALLENGES += [
     },
 ]
 
+CHALLENGES += [
+    # ═══ Networking 101 ═════════════════════════════════════════════════════
+    {
+        "id": 33, "title": "33 · Subnet & Broadcast",
+        "category": "Addressing", "module": "networking",
+        "skill": "Finding the network and broadcast address of a subnet",
+        "story": "A workstation is configured as <code>10.0.5.37/24</code>.<br><br>"
+                 "Every IPv4 subnet reserves two addresses that can't be assigned to a host: the "
+                 "<b>network address</b> (all host bits 0) and the <b>broadcast address</b> (all host bits 1). "
+                 "A <code>/24</code> means the first 24 bits are the network and the last 8 are the host.<br><br>"
+                 "What is the <b>broadcast address</b> of this subnet?<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{bcast_a_b_c_d}</code> — the broadcast IP with dots replaced by underscores.<br>"
+                 "<b>Hint:</b> With a /24, the first three octets stay put and the last octet goes to its maximum (255).",
+        "flag": "FLAG{bcast_10_0_5_255}",
+        "points": 75,
+        "notes": [
+            ("Network, hosts, broadcast", "A subnet splits an address into a network part and a host part at the prefix length (the <code>/24</code>). The lowest address in the range (host bits all 0) names the network itself; the highest (host bits all 1) is the broadcast, which reaches every host at once. Everything in between is assignable."),
+            ("Reading the /24", "<code>/24</code> = 24 network bits = the first three octets (<code>10.0.5</code>) are fixed. The remaining 8 bits are the host part, so the range is <code>10.0.5.0</code> – <code>10.0.5.255</code>: network <code>10.0.5.0</code>, broadcast <code>10.0.5.255</code>, usable <code>.1</code>–<code>.254</code>."),
+            ("Why it matters", "Mis-reading a prefix is the root of a huge share of connectivity faults: a host with the wrong mask miscalculates which addresses are 'local' and sends them to the wrong place. Network/broadcast math is the foundation the rest of this track and all of troubleshooting builds on."),
+            ("Key tools", "<code>ipcalc 10.0.5.37/24</code> &nbsp;·&nbsp; <code>sipcalc</code> &nbsp;·&nbsp; Python: <code>import ipaddress; ipaddress.ip_interface('10.0.5.37/24').network.broadcast_address</code> &nbsp;·&nbsp; or just count the bits by hand"),
+        ],
+    },
+    {
+        "id": 34, "title": "34 · CIDR Host Math",
+        "category": "Addressing", "module": "networking",
+        "skill": "Counting usable hosts in a CIDR block",
+        "story": "Your team is handed the block <code>192.168.40.0/27</code> for a new VLAN.<br><br>"
+                 "The prefix length tells you how many host bits are left: a <code>/27</code> leaves "
+                 "<code>32 − 27 = 5</code> host bits. The total number of addresses is <code>2^(host bits)</code>, "
+                 "but two of them (network and broadcast) are never assignable to a device.<br><br>"
+                 "How many <b>usable host addresses</b> does a <code>/27</code> provide?<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{N_usable_hosts}</code> — replace N with the number.",
+        "flag": "FLAG{30_usable_hosts}",
+        "points": 100,
+        "notes": [
+            ("The formula", "Usable hosts = <code>2^(32 − prefix) − 2</code>. The <code>− 2</code> removes the network and broadcast addresses. A <code>/27</code> → <code>2^5 − 2 = 32 − 2 = 30</code>. Memorise the common ones: /24→254, /25→126, /26→62, /27→30, /28→14, /29→6, /30→2."),
+            ("Why subnets get carved this way", "Smaller subnets waste fewer addresses and shrink broadcast domains (less noise, smaller blast radius for a misconfiguration). A point-to-point link only needs a <code>/30</code> (2 hosts); a /27 comfortably fits a rack or a small VLAN. Right-sizing is a security and a performance decision."),
+            ("The off-by-one trap", "People forget the <code>− 2</code> and provision for 32 devices in a /27, then run out at 30. The broadcast and network addresses are real and reserved — DHCP scopes must exclude them, which is why a scope is defined as <code>.1</code>–<code>.30</code>, not <code>.0</code>–<code>.31</code>."),
+            ("Key tools", "<code>ipcalc 192.168.40.0/27</code> prints usable range and count &nbsp;·&nbsp; Python: <code>ipaddress.ip_network('192.168.40.0/27').num_addresses - 2</code> &nbsp;·&nbsp; any subnet cheat-sheet / the 'subnet ruler'"),
+        ],
+    },
+    {
+        "id": 35, "title": "35 · Public vs Private",
+        "category": "Addressing", "module": "networking",
+        "skill": "Recognising RFC 1918 private address ranges",
+        "story": "A host is talking to these five IP addresses:<br><br>"
+                 "<code class='block-code'>10.4.2.9\n172.16.30.1\n192.168.100.5\n203.0.113.10\n169.254.8.8</code><br>"
+                 "Four of them are on private or link-local ranges that never route across the public internet "
+                 "(RFC 1918: <code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code>; "
+                 "link-local <code>169.254.0.0/16</code>). Exactly one is a <b>public, internet-routable</b> address.<br><br>"
+                 "Which address is the public one?<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{public_a_b_c_d}</code> — the public IP with dots as underscores.",
+        "flag": "FLAG{public_203_0_113_10}",
+        "points": 100,
+        "notes": [
+            ("The RFC 1918 ranges", "Three blocks are reserved for private use and are never routed on the internet: <code>10.0.0.0/8</code>, <code>172.16.0.0/12</code> (that's <code>172.16</code>–<code>172.31</code>, not all of 172), and <code>192.168.0.0/16</code>. Add link-local <code>169.254.0.0/16</code> (self-assigned when DHCP fails) and loopback <code>127.0.0.0/8</code>. Anything else is public."),
+            ("The 172 gotcha", "<code>172.16.30.1</code> is private but <code>172.32.0.1</code> would be public — the private block is only <code>172.16</code> through <code>172.31</code>. The second octet is what decides it, and it trips people constantly. <code>203.0.113.0/24</code> here is a documentation range standing in for 'a real public address'."),
+            ("Why it matters", "NAT exists because private addresses can't be routed publicly — many hosts share one public IP outbound. In an incident, separating internal (RFC 1918) peers from external (public) ones is the first cut you make: traffic to a public IP is egress and may be exfiltration or C2; traffic between private IPs is lateral movement."),
+            ("Key tools", "Python: <code>ipaddress.ip_address('203.0.113.10').is_private</code> &nbsp;·&nbsp; <code>ipcalc</code> &nbsp;·&nbsp; whois / RIR lookups for ownership of a public IP &nbsp;·&nbsp; memorise the four private blocks — it's the fastest check you'll make all day"),
+        ],
+    },
+    {
+        "id": 36, "title": "36 · Know Your Ports",
+        "category": "Protocols", "module": "networking",
+        "skill": "Mapping listening ports to well-known services",
+        "story": "You run <code>ss -tlnp</code> on a server and see what's listening:<br><br>"
+                 "<code class='block-code'>State   Local Address:Port   Process\nLISTEN  0.0.0.0:22           sshd\nLISTEN  0.0.0.0:80           nginx\nLISTEN  0.0.0.0:443          nginx\nLISTEN  0.0.0.0:3389         xrdp</code><br>"
+                 "Three of these are expected on a web host. One is a <b>remote-desktop</b> service that should "
+                 "almost never be exposed on <code>0.0.0.0</code> (all interfaces), and it's listening on its "
+                 "well-known port.<br><br>"
+                 "Name that service and its port.<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{service_exposed_on_PORT}</code> — e.g. the service name, lowercase, then the port number.",
+        "flag": "FLAG{rdp_exposed_on_3389}",
+        "points": 100,
+        "notes": [
+            ("Well-known ports", "Ports 0–1023 are 'well-known' and map to standard services: 22 SSH, 25 SMTP, 53 DNS, 80 HTTP, 443 HTTPS, 445 SMB, 3306 MySQL, 3389 RDP, 5432 Postgres, 8080 HTTP-alt. Knowing the top ~20 by heart lets you read a scan or a listener dump at a glance."),
+            ("Reading ss / netstat", "<code>ss -tlnp</code> = TCP (<code>t</code>), listening (<code>l</code>), numeric (<code>n</code>), with process (<code>p</code>). <code>0.0.0.0:3389</code> means RDP is bound to <i>every</i> interface, including any public one — versus <code>127.0.0.1:3389</code>, which would only accept local connections. The bind address matters as much as the port."),
+            ("Why RDP on 3389 is dangerous", "Exposed RDP is one of the most common ransomware entry points: it's brute-forceable, and unpatched versions have had wormable RCEs (BlueKeep, CVE-2019-0708). Remote desktop belongs behind a VPN or a bastion, never directly on the internet. The same logic applies to SMB/445 and database ports."),
+            ("Key tools", "<code>ss -tlnp</code> / <code>netstat -tlnp</code> locally &nbsp;·&nbsp; <code>nmap -sV</code> remotely to map ports to service+version &nbsp;·&nbsp; <code>/etc/services</code> lists the standard assignments &nbsp;·&nbsp; Shodan to see what you're exposing publicly"),
+        ],
+    },
+    {
+        "id": 37, "title": "37 · Follow the Route",
+        "category": "Routing", "module": "networking",
+        "skill": "Identifying the default gateway from a routing table",
+        "story": "Here is a host's routing table from <code>ip route</code>:<br><br>"
+                 "<code class='block-code'>default via 192.168.1.1 dev eth0 proto dhcp metric 100\n192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.42\n10.8.0.0/24 dev tun0 scope link</code><br>"
+                 "When this host sends a packet to an address that matches none of the specific routes "
+                 "(say, <code>8.8.8.8</code> on the internet), it uses the <b>default route</b>. The packet is "
+                 "handed to the gateway on that line.<br><br>"
+                 "What is this host's <b>default gateway</b>?<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{gateway_a_b_c_d}</code> — the gateway IP with dots as underscores.",
+        "flag": "FLAG{gateway_192_168_1_1}",
+        "points": 100,
+        "notes": [
+            ("How routing picks a line", "A host matches a destination against its routing table using the <i>longest prefix</i> that fits. If nothing specific matches, it falls to the <code>default</code> route (<code>0.0.0.0/0</code>) and sends the packet to the gateway named after <code>via</code>. No default route = no path off the local subnet."),
+            ("Reading the table", "<code>default via 192.168.1.1 dev eth0</code> = send anything otherwise-unmatched to <code>192.168.1.1</code> out <code>eth0</code>. The <code>192.168.1.0/24 ... scope link</code> line is the directly-connected LAN (no gateway needed). <code>10.8.0.0/24 dev tun0</code> is a VPN route — only 10.8.0.x goes down the tunnel."),
+            ("Why it matters", "The gateway is the exit door. If it's wrong, missing, or unreachable, the host can talk to its own subnet but nothing beyond it — the single most common 'internet is down' cause after DNS. In troubleshooting you'll check this line first (challenge 42 is exactly this fault)."),
+            ("Key tools", "<code>ip route</code> / <code>ip r</code> (Linux) &nbsp;·&nbsp; <code>route print</code> (Windows) &nbsp;·&nbsp; <code>netstat -rn</code> (portable) &nbsp;·&nbsp; <code>ip route get 8.8.8.8</code> shows exactly which route a given destination would use"),
+        ],
+    },
+    {
+        "id": 38, "title": "38 · Name to Number",
+        "category": "DNS", "module": "networking",
+        "skill": "Tracing how a hostname resolves to an IP",
+        "story": "A host needs to reach <code>hmi.plant.local</code>. Resolution checks <code>/etc/hosts</code> "
+                 "first, then asks a DNS server. Here is what's on the box:<br><br>"
+                 "<code class='block-code'># /etc/hosts\n127.0.0.1   localhost\n192.168.1.42 this-host\n\n$ dig +short hmi.plant.local\n10.10.0.53</code><br>"
+                 "There is no entry for <code>hmi.plant.local</code> in <code>/etc/hosts</code>, so the lookup "
+                 "falls through to DNS, which answers with an address.<br><br>"
+                 "What IP does <code>hmi.plant.local</code> resolve to?<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{resolves_to_a_b_c_d}</code> — the resolved IP with dots as underscores.",
+        "flag": "FLAG{resolves_to_10_10_0_53}",
+        "points": 125,
+        "notes": [
+            ("The resolution order", "On most Linux hosts the order is set by <code>/etc/nsswitch.conf</code> (<code>hosts: files dns</code>): check the static <code>/etc/hosts</code> file first, then query DNS. A matching line in <code>/etc/hosts</code> wins outright and no DNS query is ever sent — which is how hosts-file hijacking and ad-blocking both work."),
+            ("Reading dig", "<code>dig +short name</code> prints just the answer (the A record). Full <code>dig</code> output has an ANSWER section with the record and its TTL. Here <code>/etc/hosts</code> has no <code>hmi.plant.local</code> line, so the system resolver queried DNS and got <code>10.10.0.53</code>."),
+            ("Why it matters", "Most 'the site is down' reports are actually name-resolution failures, not connectivity ones — the next track proves it by pinging an IP directly (challenge 40). Knowing whether an answer came from <code>/etc/hosts</code>, a cache, or an authoritative server tells you where to fix a wrong answer."),
+            ("Key tools", "<code>dig name</code> / <code>dig +short name</code> &nbsp;·&nbsp; <code>nslookup</code> &nbsp;·&nbsp; <code>host name</code> &nbsp;·&nbsp; <code>getent hosts name</code> (respects nsswitch order, unlike dig) &nbsp;·&nbsp; <code>resolvectl status</code> for the configured servers"),
+        ],
+    },
+    # ═══ Troubleshooting 101 ════════════════════════════════════════════════
+    {
+        "id": 39, "title": "39 · No Carrier",
+        "category": "Physical Layer", "module": "troubleshooting",
+        "skill": "Recognising a Layer 1 (physical link) failure",
+        "story": "A user can't reach anything. You check the interface with <code>ip link</code>:<br><br>"
+                 "<code class='block-code'>2: eth0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc fq_codel state DOWN\n    link/ether a4:bb:6d:1f:22:0e brd ff:ff:ff:ff:ff:ff</code><br>"
+                 "The config is administratively <code>UP</code>, but notice the flags and the <code>state</code>. "
+                 "The interface is enabled, yet it isn't seeing a signal on the wire.<br><br>"
+                 "This is a physical-layer (Layer 1) fault. <b>Which interface</b> is the one that's down?<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{down_interface_NAME}</code> — replace NAME with the interface name.",
+        "flag": "FLAG{down_interface_eth0}",
+        "points": 100,
+        "notes": [
+            ("NO-CARRIER means Layer 1", "<code>NO-CARRIER</code> plus <code>state DOWN</code> while the interface is admin-<code>UP</code> means the NIC is enabled but detects no link signal — nothing electrically/optically on the other end. That's the physical layer (Layer 1): unplugged or faulty cable, dead switch port, powered-off switch, or a bad transceiver."),
+            ("Start at the bottom", "Troubleshoot OSI bottom-up: if Layer 1 is down, everything above it (IP, DNS, the application) will fail too, and chasing those is wasted effort. <code>NO-CARRIER</code> is the one unambiguous 'stop and check the cable' signal — no amount of IP reconfiguration fixes it."),
+            ("Admin up vs operationally up", "An interface has two states: administrative (did someone <code>ip link set up</code> it?) and operational (is there link?). <code>UP</code> in the flags is administrative; <code>state DOWN</code> / <code>NO-CARRIER</code> is operational. Both must be up to pass traffic. <code>LOWER_UP</code> in the flags is the good sign you want to see."),
+            ("Key tools", "<code>ip link</code> / <code>ip -s link</code> for error counters &nbsp;·&nbsp; <code>ethtool eth0</code> shows link detected / speed / duplex &nbsp;·&nbsp; the physical link LED on the NIC and switch &nbsp;·&nbsp; swap the cable/port as the fastest test"),
+        ],
+    },
+    {
+        "id": 40, "title": "40 · It Pings by IP but Not by Name",
+        "category": "DNS", "module": "troubleshooting",
+        "skill": "Isolating a DNS failure from a connectivity failure",
+        "story": "A user says 'the internet is down.' You test:<br><br>"
+                 "<code class='block-code'>$ ping -c1 8.8.8.8\n64 bytes from 8.8.8.8: icmp_seq=1 ttl=117 time=12.3 ms\n\n$ ping -c1 google.com\nping: google.com: Name or service not known</code><br>"
+                 "Pinging the <b>IP</b> works perfectly, but pinging the <b>name</b> fails before a single packet "
+                 "leaves. Connectivity is fine; something between 'name' and 'number' is broken.<br><br>"
+                 "This is a DNS (name-resolution) failure. <b>Which name</b> failed to resolve?<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{failed_name_a_b_c}</code> — the hostname with dots replaced by underscores.",
+        "flag": "FLAG{failed_name_google_com}",
+        "points": 125,
+        "notes": [
+            ("The classic split test", "Ping an IP, then ping a name. IP works + name fails = the network path is fine and the problem is name resolution (DNS). Both fail = a connectivity/routing/Layer-1 problem. This one test instantly tells you which half of the stack to investigate, and it's the first thing to reach for on any 'it's down' report."),
+            ("Why it fails before sending", "<code>Name or service not known</code> is the resolver giving up — the host never got an IP to send to, so no packet was ever transmitted. Causes: no/unreachable DNS server in <code>/etc/resolv.conf</code>, a broken <code>systemd-resolved</code>, a bad <code>search</code> domain, or the record genuinely not existing."),
+            ("Don't be fooled by the complaint", "Users report the symptom ('internet down'), not the cause. The web browser fails identically whether it's DNS, routing, or a dead link — only your tests separate them. Resisting the urge to 'just reboot' and running the split test first is what makes troubleshooting fast."),
+            ("Key tools", "<code>ping IP</code> vs <code>ping name</code> &nbsp;·&nbsp; <code>dig google.com</code> / <code>nslookup</code> to test DNS directly &nbsp;·&nbsp; <code>cat /etc/resolv.conf</code> for the configured server &nbsp;·&nbsp; <code>resolvectl status</code> &nbsp;·&nbsp; <code>dig @8.8.8.8 google.com</code> to test a known-good server"),
+        ],
+    },
+    {
+        "id": 41, "title": "41 · Wrong Mask",
+        "category": "Addressing", "module": "troubleshooting",
+        "skill": "Spotting a subnet-mask misconfiguration",
+        "story": "A new host can reach some machines on its LAN but not others, seemingly at random. The gateway "
+                 "is <code>192.168.1.1</code> and the rest of the LAN uses a <code>/24</code>. Here's the host:<br><br>"
+                 "<code class='block-code'>$ ip addr show eth0\n    inet 192.168.1.50/16 brd 192.168.255.255 scope global eth0\n\n$ ip route\ndefault via 192.168.1.1 dev eth0</code><br>"
+                 "Compare the host's prefix to the rest of the LAN's. The host believes a far larger range is "
+                 "'directly connected' than actually is, so for some destinations it ARPs instead of routing "
+                 "through the gateway — and those fail.<br><br>"
+                 "The subnet mask is wrong. <b>What prefix length</b> is the host incorrectly set to?<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{bad_prefix_NN}</code> — replace NN with the wrong prefix number (no slash).",
+        "flag": "FLAG{bad_prefix_16}",
+        "points": 125,
+        "notes": [
+            ("Why a wrong mask is so sneaky", "The host is <code>/16</code> but the LAN is <code>/24</code>. The host therefore thinks everything in <code>192.168.0.0/16</code> is local and tries to ARP for it directly instead of sending via the gateway. Hosts that happen to be in <code>192.168.1.x</code> still work; hosts in other <code>192.168.x.x</code> subnets fail — hence the 'works for some, not others' pattern."),
+            ("Masks must agree on a segment", "Every host on the same Layer-2 segment must share the same subnet definition. A mismatched mask breaks the shared assumption about who is local vs. remote, and the failures are asymmetric and confusing. When connectivity is partial and inconsistent, suspect the mask before almost anything else."),
+            ("How it happens", "Fat-fingering <code>/16</code> for <code>/24</code>, a DHCP scope handing out the wrong mask, or copying a config from a differently-sized network. The fix is to set the correct prefix (<code>ip addr … /24</code>) and confirm it matches the gateway and peers."),
+            ("Key tools", "<code>ip addr</code> / <code>ifconfig</code> to read the prefix &nbsp;·&nbsp; compare against the gateway and a known-good peer &nbsp;·&nbsp; <code>ipcalc</code> to see what range a mask implies &nbsp;·&nbsp; <code>arp -n</code> to see which hosts it's trying to reach directly"),
+        ],
+    },
+    {
+        "id": 42, "title": "42 · The Road Ends Here",
+        "category": "Routing", "module": "troubleshooting",
+        "skill": "Diagnosing a missing default route",
+        "story": "A server reaches everything on its own subnet but can't reach the internet at all. DNS is fine, "
+                 "the link is up. You check the routing table:<br><br>"
+                 "<code class='block-code'>$ ip route\n192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.80\n10.8.0.0/24 dev tun0 scope link</code><br>"
+                 "Compare this to a healthy table (challenge 37). Something that should be the very first line is "
+                 "absent, so any packet to an address outside the known subnets has nowhere to go.<br><br>"
+                 "A route is missing. <b>Which route</b> is absent from the table?<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{absent_route_TYPE}</code> — the keyword that should begin the missing line.",
+        "flag": "FLAG{absent_route_default}",
+        "points": 150,
+        "notes": [
+            ("No default = no off-LAN path", "There's no <code>default via …</code> line. The host knows how to reach <code>192.168.1.0/24</code> and <code>10.8.0.0/24</code> directly, but anything else (the whole internet) matches no route and is dropped with 'Network is unreachable'. Local traffic works, which is exactly why it looks like a partial outage."),
+            ("The signature", "Can reach the LAN + DNS resolves + link is up, but nothing beyond the subnet → missing or wrong default route almost every time. The error on the host is <code>connect: Network is unreachable</code> (vs. a timeout, which points at the gateway being down rather than absent)."),
+            ("How it happens and the fix", "A DHCP lease that didn't include a router option, a static config that forgot the gateway, or a VPN/script that deleted the default route and never restored it. Fix: <code>ip route add default via 192.168.1.1 dev eth0</code> — and find what removed it so it doesn't come back."),
+            ("Key tools", "<code>ip route</code> / <code>netstat -rn</code> &nbsp;·&nbsp; <code>ip route get 8.8.8.8</code> (returns 'unreachable' when there's no default) &nbsp;·&nbsp; <code>traceroute 8.8.8.8</code> &nbsp;·&nbsp; check the DHCP router option or the static config"),
+        ],
+    },
+    {
+        "id": 43, "title": "43 · Two Hosts, One Address",
+        "category": "Addressing", "module": "troubleshooting",
+        "skill": "Identifying an IP address conflict",
+        "story": "Connectivity to one server is intermittent — it works for a few seconds, then drops, seemingly "
+                 "tied to nothing. The kernel log has the answer:<br><br>"
+                 "<code class='block-code'>kernel: IPv4: martian source 192.168.1.80 from 192.168.1.80\narp_monitor: duplicate IPv4 address detected! 192.168.1.80 is\n  in use by a4:bb:6d:1f:22:0e AND 00:1c:42:9a:7b:03</code><br>"
+                 "Two different MAC addresses are both claiming <code>192.168.1.80</code>. Whichever one answered "
+                 "the last ARP wins, so the traffic flaps between the two machines.<br><br>"
+                 "This is an IP address conflict. <b>Which IP</b> is claimed by two hosts?<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{conflicting_ip_a_b_c_d}</code> — the conflicted IP with dots as underscores.",
+        "flag": "FLAG{conflicting_ip_192_168_1_80}",
+        "points": 125,
+        "notes": [
+            ("One IP, two MACs", "An IP address must be unique on a segment. When two hosts claim the same one, each answers ARP for it, and switches update their forwarding to whichever replied most recently. Traffic ping-pongs between the two — the hallmark intermittent, 'works then doesn't' failure with no pattern in time."),
+            ("Reading the evidence", "<code>duplicate IPv4 address detected</code> and two distinct MACs for one IP is conclusive. <code>martian source</code> (a packet whose source address makes no sense for the interface it arrived on) is a related red flag. The MAC that <i>isn't</i> the server you expected is the offender to hunt down."),
+            ("How it happens", "A static IP set inside a DHCP range that then got leased to another host, two devices cloned from the same image, or a typo. Fix: find the rogue MAC (the switch's MAC-address table maps it to a port), correct that host, and reserve the address in DHCP so it can't be handed out again."),
+            ("Key tools", "<code>arping -D 192.168.1.80</code> (duplicate-address detection) &nbsp;·&nbsp; <code>ip neigh</code> / <code>arp -n</code> &nbsp;·&nbsp; the switch's MAC-address-table to locate the port &nbsp;·&nbsp; the kernel/syslog messages shown above &nbsp;·&nbsp; the OUI prefix of the rogue MAC hints at the vendor"),
+        ],
+    },
+    {
+        "id": 44, "title": "44 · Blocked at the Border",
+        "category": "Firewall", "module": "troubleshooting",
+        "skill": "Reading a traceroute that stalls at a filtering device",
+        "story": "A host can reach its gateway and resolve names, but one specific external service won't connect. "
+                 "You run a traceroute toward it:<br><br>"
+                 "<code class='block-code'>$ traceroute 203.0.113.10\n 1  192.168.1.1   0.4 ms   0.3 ms   0.4 ms\n 2  * * *\n 3  * * *\n 4  * * *\n ... (continues to 30 hops, all * * *)</code><br>"
+                 "Hop 1 (the local gateway) answers normally. From hop 2 onward every probe times out. The path "
+                 "reaches the gateway and then hits something that silently drops the traffic rather than routing "
+                 "or rejecting it.<br><br>"
+                 "Traffic is being silently dropped (most likely by a firewall). <b>At which hop</b> do the replies stop?<br><br>"
+                 "<b>Flag format:</b> <code>FLAG{drop_begins_hop_N}</code> — replace N with the hop number where the stars begin.",
+        "flag": "FLAG{drop_begins_hop_2}",
+        "points": 150,
+        "notes": [
+            ("Reading the stars", "<code>* * *</code> means no reply to that hop's probes. One or two hops of stars can be a router that just won't answer ICMP — normal. But <b>every</b> hop going dark immediately after your own gateway, for a destination you can't reach, points at a firewall silently dropping (DROP, not REJECT) the traffic at the border."),
+            ("Drop vs reject", "A firewall that <i>rejects</i> sends back an ICMP 'administratively prohibited' and you'd see it; one that <i>drops</i> says nothing, so probes just time out — which is why the trace goes to all-stars. Silent drop is the common default on perimeter firewalls precisely so they don't advertise themselves to a scanner."),
+            ("Confirming it's filtering, not down", "Cross-check: can other hosts reach that service? Does a different port work (<code>traceroute -T -p 443</code> vs ICMP)? If TCP/443 gets through but ICMP and the target port don't, it's selective filtering, not an outage. The fault may be your egress firewall or theirs — the trace stopping right after your gateway suggests yours."),
+            ("Key tools", "<code>traceroute</code> / <code>tracepath</code> &nbsp;·&nbsp; <code>traceroute -T -p &lt;port&gt;</code> (TCP SYN probes, often pass where ICMP is blocked) &nbsp;·&nbsp; <code>mtr</code> for a live view &nbsp;·&nbsp; <code>nc -vz host port</code> to test the actual port &nbsp;·&nbsp; check the local firewall: <code>iptables -L</code> / <code>nft list ruleset</code>"),
+        ],
+    },
+]
+
 
 # ── Modules / tracks ──────────────────────────────────────────────────────────
 # The ladder outgrew a single grid at ~20 cards, so challenges are grouped into
@@ -667,6 +911,20 @@ MODULES = [
         "level": "Defensive",
         "blurb": "Triage real .eml files: trace Received hops to the true origin, read "
                  "SPF/DKIM/DMARC, unmask deceptive links, decode attachments safely.",
+    },
+    {
+        "slug": "networking", "name": "Networking 101", "icon": "🔌",
+        "level": "Start here",
+        "blurb": "The vocabulary the other tracks assume: subnets and broadcast, "
+                 "CIDR host math, public vs private addresses, well-known ports, "
+                 "routing tables and how a name becomes an IP.",
+    },
+    {
+        "slug": "troubleshooting", "name": "Troubleshooting 101", "icon": "🔧",
+        "level": "Core skill",
+        "blurb": "Diagnose a broken network from real command output: dead links, "
+                 "DNS vs connectivity, wrong masks, missing default routes, IP "
+                 "conflicts and traffic silently dropped at a firewall.",
     },
 ]
 MODULE_BY_SLUG = {m["slug"]: m for m in MODULES}
@@ -847,6 +1105,60 @@ DOC_LINKS.update({
     30: ["Analysts_Guide_to_Phishing_Emails.pdf"],
     31: ["Analysts_Guide_to_Phishing_Emails.pdf"],
     32: ["Analysts_Guide_to_Phishing_Emails.pdf"],
+})
+
+HINT_TIERS.update({
+    33: [("Nudge", "A /24 fixes the first three octets. The broadcast is the top of the range — what's the largest value a single octet can hold?"),
+         ("Method", "Keep 10.0.5 and set the last octet to its maximum. Network is .0, broadcast is .255."),
+         ("Exact command", "<code>ipcalc 10.0.5.37/24</code> &nbsp;or&nbsp; <code>python3 -c \"import ipaddress;print(ipaddress.ip_interface('10.0.5.37/24').network.broadcast_address)\"</code>")],
+    34: [("Nudge", "32 total bits minus the prefix gives the host bits. Two addresses in every subnet can't be assigned."),
+         ("Method", "Usable = 2^(32 − prefix) − 2. For /27 that's 2^5 − 2."),
+         ("Exact command", "<code>ipcalc 192.168.40.0/27</code> &nbsp;or&nbsp; <code>python3 -c \"import ipaddress;print(ipaddress.ip_network('192.168.40.0/27').num_addresses-2)\"</code>")],
+    35: [("Nudge", "Four of the five sit inside a reserved private or link-local block. Learn the blocks and the odd one out is obvious."),
+         ("Method", "Rule out 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 and 169.254.0.0/16. The address left over is public."),
+         ("Exact command", "<code>for ip in 10.4.2.9 172.16.30.1 192.168.100.5 203.0.113.10 169.254.8.8; do python3 -c \"import ipaddress,sys;print(sys.argv[1], ipaddress.ip_address(sys.argv[1]).is_private)\" $ip; done</code>")],
+    36: [("Nudge", "Three ports belong on a web server. The fourth is remote desktop. Which port is RDP's well-known port?"),
+         ("Method", "Map each port to its service: 22 SSH, 80/443 HTTP(S), 3389 RDP. The odd one out is RDP on 3389."),
+         ("Exact command", "<code>grep -E '3389|3306|rdp' /etc/services</code> &nbsp;·&nbsp; or just recall the top-20 well-known ports")],
+    37: [("Nudge", "Which line matches a destination that fits none of the specific routes?"),
+         ("Method", "Read the line beginning <code>default via</code>; the IP after <code>via</code> is the gateway."),
+         ("Exact command", "<code>ip route | awk '/^default/{print $3}'</code>")],
+    38: [("Nudge", "Is there a line for hmi.plant.local in /etc/hosts? If not, which answer did the system use?"),
+         ("Method", "No hosts entry means the lookup went to DNS; read the address dig returned."),
+         ("Exact command", "<code>getent hosts hmi.plant.local</code> &nbsp;or&nbsp; <code>dig +short hmi.plant.local</code>")],
+    39: [("Nudge", "The interface is admin-UP, but look at the first flag and the state field."),
+         ("Method", "NO-CARRIER + state DOWN = no signal on the wire. That's Layer 1 — a cable/port/link problem."),
+         ("Exact command", "<code>ip link show eth0</code> &nbsp;then&nbsp; <code>ethtool eth0 | grep -i 'link detected'</code>")],
+    40: [("Nudge", "One command uses a number, the other a name. Which one fails, and what has to happen before a name-ping sends a packet?"),
+         ("Method", "Ping-by-IP works but ping-by-name fails before sending → name resolution (DNS) is broken, not connectivity."),
+         ("Exact command", "<code>ping -c1 8.8.8.8</code> vs <code>ping -c1 google.com</code> &nbsp;then&nbsp; <code>dig @8.8.8.8 google.com</code>")],
+    41: [("Nudge", "Compare the host's prefix length to the /24 the rest of the LAN uses. Which is bigger, and what does that make the host think is 'local'?"),
+         ("Method", "The host is /16 on a /24 LAN, so it ARPs for addresses it should route via the gateway. The mask is wrong."),
+         ("Exact command", "<code>ip addr show eth0 | grep inet</code> &nbsp;— compare the /NN to the gateway's subnet")],
+    42: [("Nudge", "Compare this routing table to a healthy one. What line is normally first and is absent here?"),
+         ("Method", "There is no <code>default via</code> line, so off-subnet traffic has no route. The default route is missing."),
+         ("Exact command", "<code>ip route | grep '^default' || echo 'no default route'</code>")],
+    43: [("Nudge", "The log names one IP but two different hardware addresses. What does it mean for one address to have two MACs?"),
+         ("Method", "Two MACs claiming one IP is an address conflict; ARP flaps between them, causing the intermittent drops."),
+         ("Exact command", "<code>arping -D -I eth0 192.168.1.80</code> &nbsp;·&nbsp; <code>ip neigh | grep 192.168.1.80</code>")],
+    44: [("Nudge", "Hop 1 answers; everything after is stars. What kind of device accepts your gateway's traffic then silently discards the rest?"),
+         ("Method", "All-stars immediately past your own gateway, with no ICMP reject, is a firewall dropping the traffic silently."),
+         ("Exact command", "<code>traceroute -T -p 443 203.0.113.10</code> &nbsp;— if TCP passes where ICMP dies, it's filtering, not an outage")],
+})
+
+TAKEAWAYS.update({
+    33: "Network is the floor of the range, broadcast is the ceiling. Everything between is yours to assign.",
+    34: "Always subtract two. The network and broadcast addresses are real and can't be hosts.",
+    35: "If it isn't in 10/8, 172.16/12, 192.168/16 or 169.254/16, it's public — and public traffic is egress.",
+    36: "A service is only as safe as its bind address. 0.0.0.0 on a remote-admin port is an open door.",
+    37: "The default route is the exit door. Find it before you blame anything past the subnet.",
+    38: "Resolution is files-then-DNS. Know which answered and you know where to fix a wrong address.",
+    39: "NO-CARRIER means stop and check the cable. Nothing above Layer 1 works until Layer 1 does.",
+    40: "Ping an IP, then a name. That one test splits 'DNS' from 'down' in five seconds.",
+    41: "A mismatched mask breaks 'who is local'. Partial, inconsistent reachability means check the prefix.",
+    42: "LAN works but the internet doesn't, and DNS is fine? Look for the missing default route first.",
+    43: "One IP, two MACs, intermittent drops. Address conflicts flap — reserve statics in DHCP.",
+    44: "Stars right after your gateway mean something is dropping you silently. Test the port, not just ICMP.",
 })
 
 
@@ -1125,6 +1437,8 @@ a:hover { text-decoration: underline; }
   padding: 0.6rem 1rem;
   color: var(--neon2);
   margin: 0.5rem 0;
+  white-space: pre-wrap;
+  overflow-x: auto;
 }
 .brand {
   display: inline-flex;

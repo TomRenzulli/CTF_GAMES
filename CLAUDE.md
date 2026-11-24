@@ -59,6 +59,8 @@ Challenges are grouped into tracks (`module` on each challenge; `MODULES` define
 | 🌐 Network Traffic Analysis | 4 | 675 | Read real packet captures in Wireshark: harvest cleartext credentials, reassemble TCP streams, decode DNS exfiltration, read a port scan. |
 | 📊 Log Analysis & Detection | 4 | 675 | The blue-team track. Find the one success in a brute force, the 200 among the 404s, impossible travel, and evidence an attacker tried to destroy. |
 | 📧 Phishing & Email Forensics | 4 | 675 | Triage real .eml files: trace Received hops to the true origin, read SPF/DKIM/DMARC, unmask deceptive links, decode attachments safely. |
+| 🔌 Networking 101 | 6 | 600 | Fundamentals the other tracks assume: subnet/broadcast math, CIDR host counts, public vs private (RFC 1918), well-known ports, routing tables, DNS resolution order. All data is inline — no downloads. |
+| 🔧 Troubleshooting 101 | 6 | 775 | Diagnose a fault from real command output: dead link (NO-CARRIER), DNS vs connectivity, wrong subnet mask, missing default route, duplicate IP, firewall silently dropping a traceroute. Data inline. |
 
 ## The Challenge Ladder
 Generated from the `CHALLENGES` list in `app.py` — regenerate rather than hand-editing.
@@ -111,6 +113,46 @@ Counts are derived at runtime (`TOTAL_CHALLENGES`, `CATEGORY_ORDER`), so this ta
 |30|When Everything Fails|Email Headers|Reading SPF, DKIM and DMARC results|175|
 |31|Hover Before You Click|Social Engineering|Separating link text from link destination|150|
 |32|Decoding the Attachment|Malware Delivery|Extracting and decoding a MIME attachment safely|200|
+
+### 🔌 Networking 101
+| # | Title | Category | Skill taught | Pts |
+|---|-------|----------|--------------|-----|
+|33|Subnet & Broadcast|Addressing|Network vs broadcast address of a subnet|75|
+|34|CIDR Host Math|Addressing|Counting usable hosts in a CIDR block|100|
+|35|Public vs Private|Addressing|Recognising RFC 1918 private ranges|100|
+|36|Know Your Ports|Protocols|Mapping listening ports to well-known services|100|
+|37|Follow the Route|Routing|Identifying the default gateway from a routing table|100|
+|38|Name to Number|DNS|Tracing how a hostname resolves to an IP|125|
+
+### 🔧 Troubleshooting 101
+| # | Title | Category | Skill taught | Pts |
+|---|-------|----------|--------------|-----|
+|39|No Carrier|Physical Layer|Recognising a Layer 1 link failure|100|
+|40|It Pings by IP but Not by Name|DNS|Isolating DNS failure from connectivity failure|125|
+|41|Wrong Mask|Addressing|Spotting a subnet-mask misconfiguration|125|
+|42|The Road Ends Here|Routing|Diagnosing a missing default route|150|
+|43|Two Hosts, One Address|Addressing|Identifying an IP address conflict|125|
+|44|Blocked at the Border|Firewall|Reading a traceroute that stalls at a filter|150|
+
+---
+
+## Networking 101 & Troubleshooting 101 (inline-data tracks)
+Added as two separate tracks (slugs `networking`, `troubleshooting`). Unlike the
+packet/log/email tracks, these carry **no artifacts**: the data a student needs
+(`ip route`, `ss -tlnp`, a traceroute, a syslog line) is pasted into each challenge
+`story` inside a `<code class='block-code'>` block — so there are no `generate.py`
+files, no `/files/` downloads, and no routes for them. `.block-code` was given
+`white-space: pre-wrap` so these multi-line dumps render; it was previously only
+ever used for single-line snippets.
+
+**Flags are computed/extracted values, never descriptive phrases, and every story
+states an explicit `Flag format:` with placeholders** (e.g. `FLAG{bcast_a_b_c_d}`,
+`FLAG{bad_prefix_NN}`). This is deliberate: a descriptive flag like
+`FLAG{wrong_subnet_mask}` would either be unguessable or have to be printed on the
+page (a giveaway). An extracted value (`FLAG{bad_prefix_16}`) is recoverable from
+the evidence and proves the student actually diagnosed it. When adding challenges
+here, keep that rule — the required value must appear in the inline evidence, and
+the flag text must **not** appear in the story body (only the format placeholder).
 
 ---
 
