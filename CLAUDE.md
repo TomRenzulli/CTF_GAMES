@@ -31,6 +31,7 @@ BERACTF/
 ├── CLAUDE.md                 # This file
 ├── static/                   # Self-hosted JetBrains Mono (woff2) + fonts.css + OFL.txt
 ├── docs/                     # Help material shown on the /docs tab — drop files in here
+├── games/                    # Self-contained HTML learning games for the /games tab (e.g. dockpunch.html)
 ├── docs_src/                 # HTML+CSS sources for the quick-reference PDFs (regenerate, don't re-author)
 │   ├── Beginner's Guide to Cyber & CTFs.pdf
 │   ├── CTF_VM_Setup_Guide.pdf
@@ -181,6 +182,23 @@ checklist and a note that the range is deliberately vulnerable.
 serves it via `send_from_directory`. Titles are derived from the filename (underscores and
 hyphens become spaces). **To add help material, commit a file into `docs/` and redeploy** —
 no code change needed. The nav link appears in all four page headers.
+
+### Learning Games tab (`/games`)
+A nav tab sitting **between Documents and Instructor**. `/games` renders `GAMES_PAGE`
+from the `LEARNING_GAMES` registry (a list of dicts: `slug`, `title`, `tagline`,
+`blurb`, `file`, optional `run`); `/games/<slug>` serves that game's self-contained
+HTML from the repo's `games/` directory (`GAMES_DIR`) via `send_from_directory`,
+404ing on an unknown slug. **To add a game: drop its HTML in `games/` and append a
+dict to `LEARNING_GAMES`** — no template or route change.
+
+First game is **DOCKPUNCH** (`games/dockpunch.html`) — an interactive, searchable,
+click-to-copy Docker/K8s/networking/security CLI cheat sheet. The source arrived
+with a `fonts.googleapis.com` `@import`; it was **replaced with `@font-face` rules
+pointing at the self-hosted `/static/fonts/JetBrainsMono-*.woff2`** so the page
+honours the site's no-third-party-fonts policy (Space Grotesk falls back to the
+system sans stack). Keep that when updating the file — don't reintroduce a remote
+font. The card also shows the `docker build … && docker run` one-liner for the full
+DOCKPUNCH container, which lives outside this repo.
 
 ### Header
 The brand text in the top-left is an `<a href="/">` (`.brand` class) — the home button.

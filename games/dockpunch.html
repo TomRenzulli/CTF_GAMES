@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DOCKPUNCH — Cheat Sheet</title>
+<style>
+  /* Self-hosted JetBrains Mono (SIL OFL) — no third-party font requests, per site policy.
+     'Space Grotesk' is not self-hosted; it falls back to the system sans-serif stack. */
+  @font-face { font-family:'JetBrains Mono'; src:url('/static/fonts/JetBrainsMono-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+  @font-face { font-family:'JetBrains Mono'; src:url('/static/fonts/JetBrainsMono-Bold.woff2') format('woff2'); font-weight:600 700; font-display:swap; }
+
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2332;
+    --border: #1e2d3d;
+    --text: #c9d1d9;
+    --text-dim: #6b7b8d;
+    --accent: #2496ED;
+    --accent2: #326CE5;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --orange: #f0883e;
+    --cyan: #39d0d8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ──────────────────────────────── */
+  .header {
+    background: linear-gradient(135deg, #0d1b2a 0%, #1b2838 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 2rem 2rem 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.03em;
+  }
+
+  .tagline {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-top: 0.2rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Search ──────────────────────────────── */
+  .search-container {
+    position: relative;
+    max-width: 600px;
+  }
+
+  .search-container::before {
+    content: '⌘';
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    font-size: 1rem;
+  }
+
+  .search {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .search:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(36, 150, 237, 0.15);
+  }
+
+  .search::placeholder { color: var(--text-dim); }
+
+  /* ── Filter tabs ─────────────────────────── */
+  .filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 0.35rem 0.85rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .filter-btn:hover {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* ── Main content ────────────────────────── */
+  .content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* ── Category sections ───────────────────── */
+  .category {
+    margin-bottom: 2.5rem;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .category-icon { font-size: 1.3rem; }
+
+  .category-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .category-count {
+    font-size: 0.7rem;
+    background: var(--surface2);
+    color: var(--text-dim);
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Command rows ────────────────────────── */
+  .cmd-grid {
+    display: grid;
+    gap: 2px;
+  }
+
+  .cmd-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    transition: background 0.1s;
+    align-items: baseline;
+  }
+
+  .cmd-row:hover {
+    background: var(--surface);
+  }
+
+  .cmd-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--green);
+    word-break: break-all;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .cmd-code:hover::after {
+    content: '📋 click to copy';
+    position: absolute;
+    top: -1.6rem;
+    left: 0;
+    font-size: 0.65rem;
+    color: var(--accent);
+    background: var(--surface2);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+
+  .cmd-code.copied::after {
+    content: '✓ copied!';
+    color: var(--green);
+  }
+
+  .cmd-desc {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  /* ── Subcategory headers ─────────────────── */
+  .sub-header {
+    color: var(--yellow);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 0.75rem 0 0.25rem 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── One-liner blocks ────────────────────── */
+  .oneliner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .oneliner:hover { border-color: var(--accent); }
+
+  .oneliner-desc {
+    font-size: 0.75rem;
+    color: var(--yellow);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 0.35rem;
+  }
+
+  .oneliner-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--green);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* ── Stats bar ───────────────────────────── */
+  .stats {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .no-results .emoji { font-size: 3rem; margin-bottom: 1rem; }
+
+  .highlight { background: rgba(36, 150, 237, 0.25); border-radius: 2px; padding: 0 1px; }
+
+  /* ── Toast notification ──────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--green);
+    color: #000;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.2s;
+    z-index: 200;
+    pointer-events: none;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 768px) {
+    .cmd-row { grid-template-columns: 1fr; gap: 0.2rem; }
+    .header { padding: 1.5rem 1rem 1rem; }
+    .content { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="logo">🥊 DOCKPUNCH</div>
+      <div class="tagline">One container. Every tool. Zero excuses.</div>
+    </div>
+  </div>
+  <div class="search-container">
+    <input class="search" type="text" id="search" placeholder="Search commands... (try: port, ssl, logs, deploy)" autofocus>
+  </div>
+  <div class="filters" id="filters"></div>
+</div>
+
+<div class="content" id="content"></div>
+<div class="toast" id="toast">Copied to clipboard!</div>
+
+<script>
+const DATA = [
+  {
+    id: "docker", icon: "🐳", title: "Docker",
+    color: "#2496ED",
+    commands: [
+      { cmd: "docker build -t name:tag .", desc: "Build image from Dockerfile" },
+      { cmd: "docker build --no-cache -t name .", desc: "Build without layer cache" },
+      { cmd: "docker run -d --name c -p 8080:80 img", desc: "Run detached, port mapped" },
+      { cmd: "docker run -it --rm img sh", desc: "Interactive shell, auto-remove" },
+      { cmd: "docker run -v $(pwd):/app -w /app img cmd", desc: "Bind mount + working dir" },
+      { cmd: "docker run --memory 512m --cpus 1.5 img", desc: "Resource-limited container" },
+      { cmd: "docker run --read-only --tmpfs /tmp img", desc: "Read-only filesystem" },
+      { cmd: "docker run --cap-drop=ALL --cap-add=NET_BIND_SERVICE img", desc: "Drop all capabilities, add one" },
+      { cmd: "docker exec -it container sh", desc: "Shell into running container" },
+      { cmd: "docker logs -f --tail 100 container", desc: "Follow last 100 log lines" },
+      { cmd: "docker stats --no-stream", desc: "One-shot resource snapshot" },
+      { cmd: "docker stats --format 'table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}'", desc: "Formatted live stats" },
+      { cmd: "docker inspect -f '{{.State.Pid}}' container", desc: "Get container PID" },
+      { cmd: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' c", desc: "Get container IP" },
+      { cmd: "docker cp container:/path/file ./local", desc: "Copy file from container" },
+      { cmd: "docker diff container", desc: "Show filesystem changes" },
+      { cmd: "docker commit container newimage:tag", desc: "Snapshot container → image" },
+      { cmd: "docker save img | gzip > img.tar.gz", desc: "Export image to tarball" },
+      { cmd: "docker load < img.tar.gz", desc: "Import image from tarball" },
+      { cmd: "docker history --no-trunc img", desc: "Show all image layers" },
+      { cmd: "docker system prune -a --volumes", desc: "Nuclear cleanup" },
+      { cmd: "docker system df", desc: "Show disk usage" },
+      { cmd: "docker network create mynet", desc: "Create bridge network" },
+      { cmd: "docker network inspect mynet", desc: "Network details + containers" },
+      { cmd: "docker volume create data && docker volume inspect data", desc: "Create + inspect volume" },
+      { sub: "Compose" },
+      { cmd: "docker compose up -d", desc: "Start services (background)" },
+      { cmd: "docker compose down -v", desc: "Stop + remove volumes" },
+      { cmd: "docker compose logs -f service", desc: "Follow service logs" },
+      { cmd: "docker compose exec service sh", desc: "Shell into service" },
+      { cmd: "docker compose build --no-cache", desc: "Force rebuild" },
+      { cmd: "docker compose config", desc: "Validate merged config" },
+      { cmd: "docker compose --profile debug up", desc: "Start with profile" },
+    ]
+  },
+  {
+    id: "kubernetes", icon: "☸", title: "Kubernetes",
+    color: "#326CE5",
+    commands: [
+      { cmd: "kubectl apply -f manifest.yaml", desc: "Create/update resources" },
+      { cmd: "kubectl delete -f manifest.yaml", desc: "Delete from file" },
+      { cmd: "kubectl get pods -A -o wide", desc: "All pods, all namespaces" },
+      { cmd: "kubectl get all -n namespace", desc: "All resources in namespace" },
+      { cmd: "kubectl describe pod name -n ns", desc: "Detailed pod info + events" },
+      { cmd: "kubectl logs pod -c container -f", desc: "Stream container logs" },
+      { cmd: "kubectl logs pod --previous", desc: "Logs from crashed container" },
+      { cmd: "kubectl exec -it pod -- /bin/sh", desc: "Shell into pod" },
+      { cmd: "kubectl port-forward svc/name 8080:80", desc: "Local port forward" },
+      { cmd: "kubectl cp pod:/remote ./local -n ns", desc: "Copy from pod" },
+      { cmd: "kubectl get events --sort-by=.lastTimestamp", desc: "Recent events" },
+      { cmd: "kubectl top pods -n ns", desc: "Pod resource usage" },
+      { cmd: "kubectl top nodes", desc: "Node resource usage" },
+      { sub: "Rollouts & Scaling" },
+      { cmd: "kubectl rollout status deploy/name", desc: "Watch rollout progress" },
+      { cmd: "kubectl rollout undo deploy/name", desc: "Rollback to previous" },
+      { cmd: "kubectl rollout restart deploy/name", desc: "Rolling restart" },
+      { cmd: "kubectl rollout history deploy/name", desc: "Revision history" },
+      { cmd: "kubectl scale deploy/name --replicas=5", desc: "Scale deployment" },
+      { cmd: "kubectl autoscale deploy/name --min=2 --max=10 --cpu-percent=70", desc: "Create HPA" },
+      { cmd: "kubectl set image deploy/name c=img:v2", desc: "Update image" },
+      { sub: "Node Operations" },
+      { cmd: "kubectl cordon node", desc: "Mark unschedulable" },
+      { cmd: "kubectl drain node --ignore-daemonsets", desc: "Evict pods" },
+      { cmd: "kubectl uncordon node", desc: "Mark schedulable" },
+      { cmd: "kubectl taint nodes node key=val:NoSchedule", desc: "Add taint" },
+      { sub: "Config & Secrets" },
+      { cmd: "kubectl config get-contexts", desc: "List contexts" },
+      { cmd: "kubectl config use-context name", desc: "Switch context" },
+      { cmd: "kubectl config set-context --current --namespace=ns", desc: "Set default namespace" },
+      { cmd: "kubectl get secret name -o jsonpath='{.data.key}' | base64 -d", desc: "Decode secret" },
+      { cmd: "kubectl create secret generic name --from-literal=key=val", desc: "Create secret" },
+      { sub: "Debugging" },
+      { cmd: "kubectl run debug --image=busybox -it --rm -- sh", desc: "Ephemeral debug pod" },
+      { cmd: "kubectl debug pod -it --image=busybox", desc: "Attach debug container" },
+      { cmd: "kubectl get pod name -o yaml", desc: "Full pod YAML" },
+      { sub: "Helm" },
+      { cmd: "helm install name repo/chart -n ns --create-namespace", desc: "Install chart" },
+      { cmd: "helm upgrade name repo/chart --set key=val", desc: "Upgrade release" },
+      { cmd: "helm rollback name revision", desc: "Rollback" },
+      { cmd: "helm list -A", desc: "All releases" },
+      { cmd: "helm template name repo/chart", desc: "Render locally" },
+      { cmd: "helm search repo keyword", desc: "Search charts" },
+    ]
+  },
+  {
+    id: "networking", icon: "🌐", title: "Networking",
+    color: "#39d0d8",
+    commands: [
+      { cmd: "curl -sS -o /dev/null -w '%{http_code}' url", desc: "Get HTTP status code" },
+      { cmd: "curl -sS -w 'DNS:%{time_namelookup} Connect:%{time_connect} TTFB:%{time_starttransfer} Total:%{time_total}\\n' url", desc: "Request timing" },
+      { cmd: "curl -sS -D- -o /dev/null url", desc: "Show response headers" },
+      { cmd: "curl -x http://proxy:8080 url", desc: "Request through proxy" },
+      { cmd: "curl -sS --resolve host:443:IP https://host/", desc: "Override DNS resolution" },
+      { cmd: "dig +short example.com", desc: "Quick DNS lookup" },
+      { cmd: "dig +trace example.com", desc: "Full DNS trace" },
+      { cmd: "dig @8.8.8.8 example.com ANY", desc: "Query specific server" },
+      { cmd: "nslookup -type=MX example.com", desc: "MX records" },
+      { cmd: "whois example.com", desc: "Domain registration" },
+      { sub: "Scanning" },
+      { cmd: "nmap -sV -sC target", desc: "Service + script scan" },
+      { cmd: "nmap -sn 192.168.1.0/24", desc: "Ping sweep" },
+      { cmd: "nmap -p- -T4 --open target", desc: "All ports, fast" },
+      { cmd: "nmap --script ssl-enum-ciphers -p 443 host", desc: "SSL ciphers" },
+      { sub: "Connections" },
+      { cmd: "ss -tlnp", desc: "All listening TCP ports" },
+      { cmd: "ss -s", desc: "Socket statistics summary" },
+      { cmd: "ss -tnp state established", desc: "Established connections" },
+      { cmd: "nc -zv host 22", desc: "Test if port is open" },
+      { cmd: "nc -l -p 8080", desc: "Listen on port" },
+      { cmd: "socat TCP-LISTEN:8080,fork TCP:target:80", desc: "TCP forwarder" },
+      { sub: "Analysis" },
+      { cmd: "traceroute -n target", desc: "Trace route (numeric)" },
+      { cmd: "mtr --report target", desc: "Traceroute + ping stats" },
+      { cmd: "tcpdump -i eth0 port 80 -A", desc: "Capture HTTP traffic" },
+      { cmd: "tcpdump -i any -w capture.pcap", desc: "Capture to file" },
+      { cmd: "tcpdump -r capture.pcap", desc: "Read capture file" },
+      { cmd: "iperf3 -s / iperf3 -c server -t 30", desc: "Bandwidth test" },
+    ]
+  },
+  {
+    id: "linux", icon: "🐧", title: "Linux System",
+    color: "#f0883e",
+    commands: [
+      { cmd: "lsof -i :8080", desc: "Find process on port" },
+      { cmd: "lsof -p PID", desc: "Files opened by PID" },
+      { cmd: "strace -p PID -e trace=network", desc: "Trace network syscalls" },
+      { cmd: "strace -c command", desc: "Syscall count summary" },
+      { cmd: "ps aux --sort=-%mem | head -20", desc: "Top 20 by memory" },
+      { cmd: "ps -eo pid,ppid,%cpu,%mem,cmd --sort=-%cpu | head", desc: "Custom ps format" },
+      { cmd: "free -h", desc: "Memory usage (human)" },
+      { cmd: "vmstat 1 5", desc: "VM stats every 1s, 5x" },
+      { cmd: "iostat -xz 1", desc: "Disk I/O stats" },
+      { sub: "Disk" },
+      { cmd: "df -hT", desc: "Disk usage + fs type" },
+      { cmd: "du -sh * | sort -rh | head -20", desc: "Largest items in dir" },
+      { cmd: "ncdu /", desc: "Interactive disk browser" },
+      { cmd: "find / -name '*.log' -mtime +30 -delete", desc: "Delete old logs" },
+      { cmd: "find / -type f -size +100M", desc: "Files larger than 100MB" },
+      { sub: "Security Audit" },
+      { cmd: "find / -perm -4000 -type f 2>/dev/null", desc: "Find SUID binaries" },
+      { cmd: "find / -writable -type d 2>/dev/null", desc: "World-writable dirs" },
+      { cmd: "last -a", desc: "Recent logins" },
+      { cmd: "who -a", desc: "Currently logged in" },
+      { sub: "Logs" },
+      { cmd: "journalctl -u service --since '1 hour ago'", desc: "Recent service logs" },
+      { cmd: "journalctl -f -p err", desc: "Follow error logs" },
+      { cmd: "dmesg -T | tail -50", desc: "Recent kernel messages" },
+    ]
+  },
+  {
+    id: "git", icon: "📦", title: "Git",
+    color: "#f85149",
+    commands: [
+      { cmd: "git log --oneline --graph --all -20", desc: "Visual branch history" },
+      { cmd: "git log --stat -5", desc: "Last 5 with diffs" },
+      { cmd: "git log --author='name' --since='2 weeks'", desc: "Filter by author+date" },
+      { cmd: "git diff --staged", desc: "Staged changes" },
+      { cmd: "git diff HEAD~3..HEAD", desc: "Diff last 3 commits" },
+      { cmd: "git stash push -m 'description'", desc: "Named stash" },
+      { cmd: "git stash list && git stash pop", desc: "List + apply stash" },
+      { cmd: "git cherry-pick SHA", desc: "Apply specific commit" },
+      { cmd: "git rebase -i HEAD~5", desc: "Interactive rebase last 5" },
+      { cmd: "git bisect start; git bisect bad; git bisect good SHA", desc: "Binary search for bug" },
+      { cmd: "git reflog", desc: "All HEAD movements" },
+      { cmd: "git reset --hard HEAD~1", desc: "Undo last commit (hard)" },
+      { cmd: "git reset --soft HEAD~1", desc: "Undo commit, keep staged" },
+      { cmd: "git clean -fdx", desc: "Remove untracked files" },
+      { cmd: "git blame file", desc: "Line-by-line last modifier" },
+      { cmd: "git shortlog -sn", desc: "Commit counts by author" },
+      { cmd: "git tag -a v1.0 -m 'Release 1.0'", desc: "Annotated tag" },
+    ]
+  },
+  {
+    id: "security", icon: "🔒", title: "Security",
+    color: "#bc8cff",
+    commands: [
+      { cmd: "openssl s_client -connect host:443", desc: "Test SSL connection" },
+      { cmd: "openssl x509 -in cert.pem -text -noout", desc: "Inspect certificate" },
+      { cmd: "openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes", desc: "Self-signed cert" },
+      { cmd: "openssl rand -hex 32", desc: "Random hex token" },
+      { cmd: "openssl rand -base64 24", desc: "Random password" },
+      { cmd: "openssl dgst -sha256 file", desc: "SHA-256 hash" },
+      { cmd: "openssl enc -aes-256-cbc -salt -in plain -out enc", desc: "Encrypt file" },
+      { sub: "SSH" },
+      { cmd: "ssh-keygen -t ed25519 -C 'comment'", desc: "Generate Ed25519 key" },
+      { cmd: "ssh-keygen -lf key.pub", desc: "Show fingerprint" },
+      { cmd: "ssh -L 8080:remote:80 user@bastion", desc: "Local port forward" },
+      { cmd: "ssh -R 8080:localhost:80 user@remote", desc: "Reverse tunnel" },
+      { cmd: "ssh -D 1080 user@proxy", desc: "SOCKS proxy" },
+      { sub: "Encryption" },
+      { cmd: "gpg --gen-key", desc: "Generate GPG keypair" },
+      { cmd: "gpg -e -r recipient file", desc: "Encrypt for recipient" },
+      { cmd: "age-keygen -o key.txt", desc: "Generate age key" },
+      { cmd: "age -r 'age1...' -o file.enc file", desc: "Encrypt with age" },
+      { sub: "Scanning" },
+      { cmd: "nikto -h http://target", desc: "Web vuln scan" },
+      { cmd: "nmap --script vuln target", desc: "Nmap vuln scripts" },
+    ]
+  },
+  {
+    id: "oneliners", icon: "⚡", title: "One-Liners",
+    color: "#d29922",
+    oneliners: [
+      { desc: "Find all processes listening on ports", code: "ss -tlnp | awk 'NR>1{print $4, $7}' | column -t" },
+      { desc: "Watch new connections in real-time", code: "watch -n1 'ss -tn state established | tail -20'" },
+      { desc: "Count HTTP status codes in access log", code: "awk '{print $9}' access.log | sort | uniq -c | sort -rn" },
+      { desc: "Files changed in the last hour", code: "find / -mmin -60 -type f 2>/dev/null" },
+      { desc: "Monitor file for pattern", code: "tail -F /var/log/syslog | grep --line-buffered 'error'" },
+      { desc: "Quick HTTP server", code: "python3 -m http.server 8080" },
+      { desc: "Parallel download", code: "aria2c -x 16 -s 16 'https://example.com/bigfile.tar.gz'" },
+      { desc: "Extract all IPs from a file", code: "grep -oP '\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}' file | sort -u" },
+      { desc: "JSON to CSV", code: "jq -r '[.field1, .field2] | @csv' data.json" },
+      { desc: "Monitor container resources", code: "docker stats --format 'table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}'" },
+      { desc: "All K8s pod images in cluster", code: "kubectl get pods -A -o jsonpath='{range .items[*]}{.spec.containers[*].image}{\"\\n\"}{end}' | sort -u" },
+      { desc: "Pods in CrashLoopBackOff", code: "kubectl get pods -A | grep -E 'CrashLoop|Error|OOMKilled'" },
+      { desc: "Decode all secrets in namespace", code: "kubectl get secrets -n ns -o json | jq '.items[].data | to_entries[] | .key + \": \" + (.value | @base64d)'" },
+      { desc: "Replace text in all YAML files", code: "find . -type f -name '*.yaml' -exec sed -i 's/old/new/g' {} +" },
+      { desc: "Disk write speed benchmark", code: "dd if=/dev/zero of=/tmp/test bs=1M count=1024 conv=fdatasync 2>&1 | tail -1" },
+      { desc: "Check cert expiry for multiple hosts", code: "for h in host1 host2; do echo | openssl s_client -connect $h:443 2>/dev/null | openssl x509 -noout -dates; echo ---$h---; done" },
+      { desc: "Generate random password", code: "openssl rand -base64 24" },
+      { desc: "Monitor DNS queries live", code: "tcpdump -i any port 53 -l | grep -oP '\\S+\\.\\S+\\? '" },
+      { desc: "Find largest Docker images", code: "docker images --format '{{.Size}}\\t{{.Repository}}:{{.Tag}}' | sort -rh | head -10" },
+      { desc: "K8s: restart all deployments in namespace", code: "kubectl get deploy -n ns -o name | xargs -I{} kubectl rollout restart {} -n ns" },
+    ]
+  },
+  {
+    id: "dockpunch", icon: "🥊", title: "DOCKPUNCH Scripts",
+    color: "#2496ED",
+    commands: [
+      { cmd: "dp-portscan <target>", desc: "Quick nmap wrapper with presets" },
+      { cmd: "dp-portscan <target> --quick", desc: "Top 100 ports, fast" },
+      { cmd: "dp-portscan <target> --full", desc: "All 65535 ports" },
+      { cmd: "dp-sslcheck <hostname>", desc: "SSL certificate inspector" },
+      { cmd: "dp-sysinfo", desc: "System health snapshot" },
+      { cmd: "dp-jsonlogs", desc: "Pipe JSON logs for pretty printing" },
+      { cmd: "dp-dockerinspect <container>", desc: "Container forensics" },
+      { cmd: "dp-diskpigs /path", desc: "Find largest files" },
+      { cmd: "dp-loadtest <url> 100 10", desc: "HTTP load test (100 reqs, 10 concurrent)" },
+      { cmd: "dp-headers <url>", desc: "HTTP header security audit" },
+      { cmd: "dp-netwatch", desc: "Live connection monitor" },
+      { cmd: "dp-procsnap cpu", desc: "Process snapshot (sort: cpu|mem|pid)" },
+      { cmd: "dp-b64 encode 'text'", desc: "Base64 encode" },
+      { cmd: "dp-b64 decode 'dGV4dA=='", desc: "Base64 decode" },
+      { cmd: "dp-cheat docker", desc: "Terminal cheat sheet by topic" },
+    ]
+  }
+];
+
+// ── Count total commands ────────────────
+let totalCmds = 0;
+DATA.forEach(cat => {
+  if (cat.commands) totalCmds += cat.commands.filter(c => c.cmd).length;
+  if (cat.oneliners) totalCmds += cat.oneliners.length;
+});
+
+// ── Render Filters ──────────────────────
+const filtersEl = document.getElementById('filters');
+const allBtn = document.createElement('button');
+allBtn.className = 'filter-btn active';
+allBtn.textContent = `All (${totalCmds})`;
+allBtn.dataset.filter = 'all';
+filtersEl.appendChild(allBtn);
+
+DATA.forEach(cat => {
+  const btn = document.createElement('button');
+  btn.className = 'filter-btn';
+  const count = (cat.commands ? cat.commands.filter(c=>c.cmd).length : 0) + (cat.oneliners ? cat.oneliners.length : 0);
+  btn.textContent = `${cat.icon} ${cat.title} (${count})`;
+  btn.dataset.filter = cat.id;
+  filtersEl.appendChild(btn);
+});
+
+// ── State ───────────────────────────────
+let activeFilter = 'all';
+let searchQuery = '';
+
+// ── Render ──────────────────────────────
+function highlight(text, query) {
+  if (!query) return text;
+  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return text.replace(regex, '<span class="highlight">$1</span>');
+}
+
+function render() {
+  const content = document.getElementById('content');
+  const q = searchQuery.toLowerCase();
+  let html = '';
+  let visibleCount = 0;
+
+  DATA.forEach(cat => {
+    if (activeFilter !== 'all' && activeFilter !== cat.id) return;
+
+    let catHtml = '';
+    let catCount = 0;
+
+    if (cat.commands) {
+      cat.commands.forEach(item => {
+        if (item.sub) {
+          if (!q || cat.commands.some(c => c.cmd && (c.cmd.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q)))) {
+            catHtml += `<div class="sub-header">${item.sub}</div>`;
+          }
+          return;
+        }
+        if (q && !item.cmd.toLowerCase().includes(q) && !item.desc.toLowerCase().includes(q)) return;
+        catHtml += `<div class="cmd-row">
+          <div class="cmd-code" onclick="copyCmd(this, '${item.cmd.replace(/'/g, "\\'")}')">${highlight(item.cmd, searchQuery)}</div>
+          <div class="cmd-desc">${highlight(item.desc, searchQuery)}</div>
+        </div>`;
+        catCount++;
+      });
+    }
+
+    if (cat.oneliners) {
+      cat.oneliners.forEach(item => {
+        if (q && !item.code.toLowerCase().includes(q) && !item.desc.toLowerCase().includes(q)) return;
+        catHtml += `<div class="oneliner" onclick="copyCmd(this, \`${item.code.replace(/`/g, '\\`')}\`)">
+          <div class="oneliner-desc"># ${highlight(item.desc, searchQuery)}</div>
+          <div class="oneliner-code">${highlight(item.code, searchQuery)}</div>
+        </div>`;
+        catCount++;
+      });
+    }
+
+    if (catCount > 0) {
+      html += `<div class="category">
+        <div class="category-header">
+          <span class="category-icon">${cat.icon}</span>
+          <span class="category-title" style="color:${cat.color}">${cat.title}</span>
+          <span class="category-count">${catCount}</span>
+        </div>
+        <div class="cmd-grid">${catHtml}</div>
+      </div>`;
+      visibleCount += catCount;
+    }
+  });
+
+  if (visibleCount === 0) {
+    html = `<div class="no-results">
+      <div class="emoji">🥊</div>
+      <div>No commands found for "${searchQuery}"</div>
+      <div style="margin-top:0.5rem;font-size:0.8rem">Try a different search term</div>
+    </div>`;
+  }
+
+  html += `<div class="stats">${visibleCount} commands shown of ${totalCmds} total — DOCKPUNCH v1.0</div>`;
+  content.innerHTML = html;
+}
+
+// ── Copy to clipboard ───────────────────
+function copyCmd(el, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    el.classList.add('copied');
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); el.classList.remove('copied'); }, 1500);
+  });
+}
+
+// ── Events ──────────────────────────────
+document.getElementById('search').addEventListener('input', (e) => {
+  searchQuery = e.target.value;
+  render();
+});
+
+document.getElementById('filters').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('filter-btn')) return;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  activeFilter = e.target.dataset.filter;
+  render();
+});
+
+// Keyboard shortcut: / to focus search
+document.addEventListener('keydown', (e) => {
+  if (e.key === '/' && document.activeElement !== document.getElementById('search')) {
+    e.preventDefault();
+    document.getElementById('search').focus();
+  }
+  if (e.key === 'Escape') {
+    document.getElementById('search').value = '';
+    searchQuery = '';
+    render();
+  }
+});
+
+// Initial render
+render();
+</script>
+</body>
+</html>

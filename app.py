@@ -935,6 +935,25 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DOCS_DIR = os.path.join(APP_DIR, "docs")
 # Challenge artifacts (captures, logs, .eml files) generated at build time.
 FILES_DIR = os.path.join(APP_DIR, "challenge_files")
+# Self-contained learning games (static HTML pages) served on the Learning Games tab.
+GAMES_DIR = os.path.join(APP_DIR, "games")
+
+# Learning Games registry — one dict per game. `file` is served from GAMES_DIR at
+# /games/<slug>; `run` (optional) is a one-liner shown on the card for anything the
+# student runs locally. Add a game by dropping its HTML in games/ and appending here.
+LEARNING_GAMES = [
+    {
+        "slug": "dockpunch",
+        "title": "DOCKPUNCH 🥊",
+        "tagline": "One container. Every tool. Zero excuses.",
+        "blurb": "A searchable, click-to-copy cheat sheet for Docker, Kubernetes, "
+                 "networking and security CLIs. Hit <kbd>/</kbd> to search, "
+                 "<kbd>Esc</kbd> to clear, and click any command to copy it.",
+        "file": "dockpunch.html",
+        "run": "docker build -t dockpunch . && docker run -it dockpunch",
+    },
+]
+GAMES_BY_SLUG = {g["slug"]: g for g in LEARNING_GAMES}
 
 # ── Progressive hints ─────────────────────────────────────────────────────────
 # Three tiers per challenge, each revealed only on click. The old always-visible
@@ -1546,6 +1565,7 @@ SITE_HEADER = """
   <nav>
     <a href="/"{% if active == 'challenges' %} aria-current="page"{% endif %}>Challenges</a>
     <a href="/docs"{% if active == 'docs' %} aria-current="page"{% endif %}>Documents</a>
+    <a href="/games"{% if active == 'games' %} aria-current="page"{% endif %}>Learning Games</a>
     {% if active == 'instructor' %}<a href="/instructor" aria-current="page">Instructor</a>{% endif %}
   </nav>
 </header>
@@ -2209,6 +2229,51 @@ DOCS_PAGE = """<!DOCTYPE html><html lang="en">
 </body></html>
 """
 
+GAMES_PAGE = """<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Learning Games · Cyber Training Academy</title>
+""" + FAVICON_LINK + """
+<style>
+""" + BASE_STYLE + """
+.wrap { max-width: 760px; margin: 0 auto; padding: 2rem; }
+.page-title { font-size:1.5rem; font-weight:700; color:var(--neon); margin-bottom:0.3rem; }
+.page-sub { color:var(--dim); font-size:0.85rem; margin-bottom:1.5rem; }
+.game-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:6px;
+  padding:1rem 1.2rem; margin-bottom:0.9rem;
+}
+.game-head { display:flex; align-items:baseline; gap:0.8rem; flex-wrap:wrap; }
+.game-title { color:var(--text); font-size:1.1rem; font-weight:700; }
+.game-tag { color:var(--neon2); font-size:0.8rem; }
+.game-blurb { color:var(--dim); font-size:0.88rem; margin:0.6rem 0 0.9rem; }
+.game-run { color:var(--dim); font-size:0.8rem; margin-top:0.7rem; }
+.game-run code { color:var(--neon2); }
+.empty { color:var(--dim); font-size:0.85rem; }
+</style>
+</head>
+<body>
+""" + SITE_HEADER + """
+<div class="wrap">
+  <div class="page-title">Learning Games</div>
+  <div class="page-sub">Hands-on, play-in-the-browser tools for drilling real skills.</div>
+  {% for g in games %}
+  <div class="game-card">
+    <div class="game-head">
+      <span class="game-title">{{ g.title }}</span>
+      {% if g.tagline %}<span class="game-tag">{{ g.tagline }}</span>{% endif %}
+    </div>
+    <div class="game-blurb">{{ g.blurb|safe }}</div>
+    <a class="btn-link" href="/games/{{ g.slug|urlencode }}" target="_blank" rel="noopener">Play →</a>
+    {% if g.run %}<div class="game-run">Run the full container locally: <code>{{ g.run }}</code></div>{% endif %}
+  </div>
+  {% else %}
+  <p class="empty">No games yet.</p>
+  {% endfor %}
+</div>
+</body></html>
+"""
+
 SPLASH_PAGE = """<!DOCTYPE html><html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -2547,6 +2612,19 @@ def docs():
 @app.route("/docs/<path:filename>")
 def doc_file(filename):
     return send_from_directory(DOCS_DIR, filename)
+
+
+@app.route("/games")
+def games():
+    return render_template_string(GAMES_PAGE, games=LEARNING_GAMES, **header_ctx("games"))
+
+
+@app.route("/games/<slug>")
+def game(slug):
+    g = GAMES_BY_SLUG.get(slug)
+    if not g:
+        return "Game not found", 404
+    return send_from_directory(GAMES_DIR, g["file"])
 
 
 # ── Challenge 5: header endpoint ──────────────────────────────────────────────
