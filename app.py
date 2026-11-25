@@ -889,7 +889,7 @@ CHALLENGES += [
 # to "foundations" (the original 20).
 MODULES = [
     {
-        "slug": "foundations", "name": "Foundations", "icon": "🎓",
+        "slug": "foundations", "name": "CTF Foundations", "icon": "🎓",
         "level": "Start here",
         "blurb": "Encoding, recon, file analysis, crypto, web, auth and injection. "
                  "Builds the vocabulary every other track assumes.",

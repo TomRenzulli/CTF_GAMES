@@ -55,7 +55,7 @@ Challenges are grouped into tracks (`module` on each challenge; `MODULES` define
 
 | Track | Challenges | Points | Focus |
 |-------|-----------:|-------:|-------|
-| 🎓 Foundations | 20 | 2575 | Encoding, recon, file analysis, crypto, web, auth and injection. Builds the vocabulary every other track assumes. |
+| 🎓 CTF Foundations | 20 | 2575 | Encoding, recon, file analysis, crypto, web, auth and injection. Builds the vocabulary every other track assumes. |
 | 🌐 Network Traffic Analysis | 4 | 675 | Read real packet captures in Wireshark: harvest cleartext credentials, reassemble TCP streams, decode DNS exfiltration, read a port scan. |
 | 📊 Log Analysis & Detection | 4 | 675 | The blue-team track. Find the one success in a brute force, the 200 among the 404s, impossible travel, and evidence an attacker tried to destroy. |
 | 📧 Phishing & Email Forensics | 4 | 675 | Triage real .eml files: trace Received hops to the true origin, read SPF/DKIM/DMARC, unmask deceptive links, decode attachments safely. |
@@ -66,7 +66,7 @@ Challenges are grouped into tracks (`module` on each challenge; `MODULES` define
 Generated from the `CHALLENGES` list in `app.py` — regenerate rather than hand-editing.
 Counts are derived at runtime (`TOTAL_CHALLENGES`, `CATEGORY_ORDER`), so this table is documentation, not configuration.
 
-### 🎓 Foundations
+### 🎓 CTF Foundations
 | # | Title | Category | Skill taught | Pts |
 |---|-------|----------|--------------|-----|
 |1|Base64 Basics|Encoding|Decoding Base64|50|
